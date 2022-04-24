@@ -1,0 +1,10 @@
+*.swp
+*.swo
+change
+csrc
+*.log
+simv
+simv.daidir
+ucli.key
+vc_hdrs.h
+waves.vcd
