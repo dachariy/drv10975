@@ -228,47 +228,55 @@ class drv10975_register_map extends uvm_sequence_item;
 
   endfunction : reg_read
 
-  function bit reg_write(input [7:0] reg_addr, input [7:0] reg_data);
+  function bit reg_write(input [7:0] reg_addr, input [7:0] reg_data, bit backdoor_wr = 0);
 
     //Assume Successful write
     reg_write = 1;
-    case(reg_addr)
-       `SPEEDCTRL1    : {SpdCtrl[7:0]}                                    = reg_data;
-       `SPEEDCTRL2    : {OverRide, SpdCtrl[8]}                            = {reg_data[7], reg_data[0]};
-       `DEVCTRL       : {enProgKey}                                       = reg_data;
-       `EECTRL        : {sleepDis, Sldata, eeRefresh, eeWrite}            = reg_data[7:5];
-       `STATUS        : {OverTemp, Slp_Stdby, OverCurr, MtrLck}           = reg_data[7:5];
-       `MOTORSPEED1   : {MotorSpeed[15:8]}                                = reg_data;
-       `MOTORSPEED2   : {MotorSpeed[7:0]}                                 = reg_data;
-       `MOTORPERIOD1  : {MotorPeriod[15:0]}                               = reg_data;
-       `MOTORPERIOD2  : {MotorPeriod[7:0]}                                = reg_data;
-       `MOTORKT1      : {MotorKt[15:0]}                                   = reg_data;
-       `MOTORKT2      : {MotorKt[7:0]}                                    = reg_data;
-       `MOTORCURRENT1 : {MotorCurrent[10:8]}                              = reg_data;
-       `MOTORCURRENT2 : {MotorCurrent[7:0]}                               = reg_data;
-       `IPDPOSITION   : {IPDPosition}                                     = reg_data;
-       `SUPPLYVOLTAGE : {SupplyVoltage}                                   = reg_data;
-       `SPEEDCMD      : {SpeedCmd}                                        = reg_data;
-       `SPDCMDBUFFER  : {spdCmdBuffer}                                    = reg_data;
-       `FAULTCODE     : {Lock5, Lock4, Fault3, Lock2, Lock1, Lock0}       = reg_data;
-       `MOTORPARAM1   : {DoubleFreq, Rm}                                  = reg_data;
-       `MOTORPARAM2   : {AdjMode, Kt}                                     = reg_data;
-       `MOTORPARAM3   : {CtrlAdvMd, TCtrlAdv}                             = reg_data;
-       `SYSOPT1       : {ISDThr, IPDAdvcAgl, ISDen, RvsDrEn, RvsDrThr}    = reg_data;
-       `SYSOPT2       : {OpenLCurr, OpenLCurrRt, BrkDoneThr}              = reg_data;
-       `SYSOPT3       : {CtrlCoef, StAccel2, StAccel}                     = reg_data;
-       `SYSOPT4       : {Op2ClsThr, AlignTime}                            = reg_data;
-       `SYSOPT5       : {LockEn, AVSIndEn, AVSMEn, AVSMMd, IPDRlsMd}      = reg_data;
-       `SYSOPT6       : {SWiLimitThr, HWiLimitThr}                        = reg_data[7:1];
-       `SYSOPT7       : {LockEn5, ClsLpAccel, Deadtime}                   = reg_data;
-       `SYSOPT8       : {IPDCurrThr, LockEn4, VregSel, IPDClk}            = reg_data;
-       `SYSOPT9       : {FGOLsel, FGcycle, KtLckThr, SpdCtrlMd, CLoopDis} = reg_data;
-       default:
-         begin
-           `uvm_warning(get_full_name(), "Invalid Address write.");
-           reg_write = 0;
-         end
-    endcase
+
+    if(backdoor_wr == 0 && reg_addr inside {[`STATUS : `SPDCMDBUFFER], `FAULTCODE})
+    begin
+      reg_write = 0;
+    end
+    else
+    begin
+      case(reg_addr)
+        `SPEEDCTRL1    : {SpdCtrl[7:0]}                                    = reg_data;
+        `SPEEDCTRL2    : {OverRide, SpdCtrl[8]}                            = {reg_data[7], reg_data[0]};
+        `DEVCTRL       : {enProgKey}                                       = reg_data;
+        `EECTRL        : {sleepDis, Sldata, eeRefresh, eeWrite}            = reg_data[7:5];
+        `STATUS        : {OverTemp, Slp_Stdby, OverCurr, MtrLck}           = reg_data[7:5];
+        `MOTORSPEED1   : {MotorSpeed[15:8]}                                = reg_data;
+        `MOTORSPEED2   : {MotorSpeed[7:0]}                                 = reg_data;
+        `MOTORPERIOD1  : {MotorPeriod[15:0]}                               = reg_data;
+        `MOTORPERIOD2  : {MotorPeriod[7:0]}                                = reg_data;
+        `MOTORKT1      : {MotorKt[15:0]}                                   = reg_data;
+        `MOTORKT2      : {MotorKt[7:0]}                                    = reg_data;
+        `MOTORCURRENT1 : {MotorCurrent[10:8]}                              = reg_data;
+        `MOTORCURRENT2 : {MotorCurrent[7:0]}                               = reg_data;
+        `IPDPOSITION   : {IPDPosition}                                     = reg_data;
+        `SUPPLYVOLTAGE : {SupplyVoltage}                                   = reg_data;
+        `SPEEDCMD      : {SpeedCmd}                                        = reg_data;
+        `SPDCMDBUFFER  : {spdCmdBuffer}                                    = reg_data;
+        `FAULTCODE     : {Lock5, Lock4, Fault3, Lock2, Lock1, Lock0}       = reg_data;
+        `MOTORPARAM1   : {DoubleFreq, Rm}                                  = reg_data;
+        `MOTORPARAM2   : {AdjMode, Kt}                                     = reg_data;
+        `MOTORPARAM3   : {CtrlAdvMd, TCtrlAdv}                             = reg_data;
+        `SYSOPT1       : {ISDThr, IPDAdvcAgl, ISDen, RvsDrEn, RvsDrThr}    = reg_data;
+        `SYSOPT2       : {OpenLCurr, OpenLCurrRt, BrkDoneThr}              = reg_data;
+        `SYSOPT3       : {CtrlCoef, StAccel2, StAccel}                     = reg_data;
+        `SYSOPT4       : {Op2ClsThr, AlignTime}                            = reg_data;
+        `SYSOPT5       : {LockEn, AVSIndEn, AVSMEn, AVSMMd, IPDRlsMd}      = reg_data;
+        `SYSOPT6       : {SWiLimitThr, HWiLimitThr}                        = reg_data[7:1];
+        `SYSOPT7       : {LockEn5, ClsLpAccel, Deadtime}                   = reg_data;
+        `SYSOPT8       : {IPDCurrThr, LockEn4, VregSel, IPDClk}            = reg_data;
+        `SYSOPT9       : {FGOLsel, FGcycle, KtLckThr, SpdCtrlMd, CLoopDis} = reg_data;
+        default:
+          begin
+            `uvm_warning(get_full_name(), "Invalid Address write.");
+            reg_write = 0;
+          end
+      endcase
+    end
 
   endfunction : reg_write
 

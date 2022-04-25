@@ -31,7 +31,6 @@ class drv10975_env extends uvm_env;
     end
     else
     begin
-
       if(is_dut)
       begin
         `uvm_info(get_full_name(), "Configuring ENV as DUT", UVM_LOW)
@@ -60,7 +59,7 @@ class drv10975_env extends uvm_env;
     register_map = drv10975_register_map::type_id::create("register_map");
     uvm_config_db #(drv10975_register_map)::set(this, "*", "register_map", register_map);
 
-    i2c_ag= i2c_agent::type_id::create("i2c_agent", this);
+    i2c_ag = i2c_agent::type_id::create("i2c_agent", this);
     i2c_scbd  = drv10975_scoreboard::type_id::create("i2c_scbd", this);
   endfunction : build_phase
 

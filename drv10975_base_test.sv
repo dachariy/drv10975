@@ -20,7 +20,8 @@ class drv10975_base_test extends uvm_test;
 
     dut_env = drv10975_env::type_id::create("dut_env", this);
     tb_env  = drv10975_env::type_id::create("tb_env", this);
-    
+
+    //Pass necessary config to ENVs
     uvm_config_db#(bit)::set(dut_env, "", "is_dut", 1);
     uvm_config_db#(bit)::set(tb_env, "",  "is_dut", 0);
     uvm_config_db#(bit)::set(this, "*dut_env*", "is_master", 0);

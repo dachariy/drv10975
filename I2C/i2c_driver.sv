@@ -230,7 +230,7 @@ class i2c_driver extends uvm_driver # (i2c_item);
             end
           RCV_SLAVE_ADDRESS:
             begin
-              for(int indx = $size(packet.slave_address); indx >= 0; indx++)
+              for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx++)
               begin
                 @(posedge drv_vif.SCL);
                 packet.slave_address[indx] = drv_vif.SDA;
