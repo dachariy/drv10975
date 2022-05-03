@@ -26,5 +26,24 @@ module top();
     run_test("drv10975_base_test");
   end
 
+  //Wavedump
+  initial
+  begin
+   if($test$plusargs("WAVE"))
+   begin
+     $dumpfile("waves.vcd");
+     $dumpvars;
+   end
+  end
+
+  initial
+  begin
+   if($test$plusargs("TIMEOUT"))
+   begin
+    #2000us;
+    $finish;
+   end
+  end
+
 endmodule : top
 

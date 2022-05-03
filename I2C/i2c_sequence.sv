@@ -5,7 +5,7 @@
 
 class i2c_sequence extends uvm_sequence # (i2c_item);
 
-  int txn_no;
+  bit [7:0] valid_addr[30] = '{ 8'h00, 8'h01, 8'h02, 8'h03, 8'h10, 8'h11, 8'h12, 8'h13, 8'h14, 8'h15, 8'h16, 8'h17, 8'h18, 8'h19, 8'h1A, 8'h1B, 8'h1C, 8'h1E, 8'h20, 8'h21, 8'h22, 8'h23, 8'h24, 8'h25, 8'h26, 8'h27, 8'h28, 8'h29, 8'h2A, 8'h2B };
 
   `uvm_object_utils(i2c_sequence)
 
@@ -15,8 +15,29 @@ class i2c_sequence extends uvm_sequence # (i2c_item);
   endfunction : new
 
   virtual task body();
-    txn_no = 0;
+    super.body();
+
+    //READ
+    foreach(valid_addr[i])
+    begin
+      reg_read(valid_addr[i]);  
+    end
+
   endtask : body
+
+
+  virtual task reg_write (input bit [7:0] addr, 
+                          input bit [7:0] data);
+
+    `uvm_do_with(req, {req.reg_address == addr; req.data == data;})
+      
+  endtask: reg_write
+
+  virtual task reg_read (input bit [7:0] addr); 
+
+    `uvm_do_with(req, {req.reg_address == addr;})
+      
+  endtask: reg_read
 
 endclass : i2c_sequence
 

@@ -16,6 +16,8 @@ package drv10975_pkg;
   `include "drv10975_scoreboard.sv"
   `include "drv10975_env.sv"
   `include "drv10975_base_test.sv"
+  
+  `include "I2C/i2c_sanity_read_test.sv"
 endpackage
 
 `endif
