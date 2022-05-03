@@ -6,20 +6,21 @@
 class i2c_item extends uvm_sequence_item;
   
   typedef enum bit {MASTER, SLAVE} device_e;
+  typedef enum bit {READ, WRITE} action_e;
   
   // Rand Variable declarations
   rand bit [6:0] slave_address;
   rand bit [7:0] reg_address;
-  rand bit wr_rd;
+  rand action_e wr_rd;
   rand bit [7:0] data;
   rand device_e device;
 
   //UVM Automation Macro
   `uvm_object_utils_begin(i2c_item)
-    `uvm_field_enum(device_e, device, UVM_ALL_ON)
+    `uvm_field_enum(device_e, device, UVM_ALL_ON | UVM_NOCOMPARE)
     `uvm_field_int(slave_address, UVM_ALL_ON)
     `uvm_field_int(reg_address, UVM_ALL_ON)
-    `uvm_field_int(wr_rd, UVM_ALL_ON)
+    `uvm_field_enum(action_e, wr_rd, UVM_ALL_ON)
     `uvm_field_int(data, UVM_ALL_ON)
   `uvm_object_utils_end
 

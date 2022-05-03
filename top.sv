@@ -17,7 +17,7 @@ module top();
   initial
   begin
     ref_clk = 0;
-    forever #(`I2C_CLK_PERIOD_US * 1000) ref_clk = ~ref_clk;
+    forever #(`I2C_CLK_PERIOD_US/2 * 1000) ref_clk = ~ref_clk;
   end
 
   initial 
@@ -40,7 +40,7 @@ module top();
   begin
    if($test$plusargs("TIMEOUT"))
    begin
-    #2000us;
+    #200ms;
     $finish;
    end
   end

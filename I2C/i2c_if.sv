@@ -7,4 +7,6 @@ interface i2c_if(input ref_clk);
   // useful in clock stretching
   wor SCL;
 
+  assign SCL = ref_clk;
+
 endinterface : i2c_if

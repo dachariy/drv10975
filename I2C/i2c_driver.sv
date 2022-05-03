@@ -8,7 +8,7 @@ typedef class drv10975_register_map;
 class i2c_driver extends uvm_driver # (i2c_item);
 
   //Enum for States
-  typedef enum {IDLE, DRV_START, RCV_START, DRV_SLAVE_ADDRESS, RCV_SLAVE_ADDRESS, DRV_REG_ADDRESS, RCV_REG_ADDRESS, DRV_DATA, RCV_DATA, RCV_ACK, DRV_ACK, DRV_STOP} state_e;
+  typedef enum {ST_START, ST_SLAVE_ADDRESS, ST_REG_ADDRESS, ST_DATA, ST_STOP} state_e;
 
   //Virtual Interface instance
   virtual i2c_if drv_vif;
@@ -17,7 +17,7 @@ class i2c_driver extends uvm_driver # (i2c_item);
   drv10975_register_map register_map;
 
   bit is_master;
-  state_e prev_state, curr_state, next_state;
+  state_e curr_state, next_state;
 
   bit ack0_nack1;
   bit [7:0] reg_data;
@@ -61,8 +61,8 @@ class i2c_driver extends uvm_driver # (i2c_item);
         `uvm_fatal(get_type_name, "Cant fetch is_master from config_db, configuring as I2C Slave")
     end
 
-    curr_state = is_master ? IDLE : RCV_START;
-    next_state = is_master ? IDLE : RCV_START;
+    curr_state = ST_START;
+    next_state = ST_START;
   endfunction : build_phase
 
   //Connect Phase
@@ -76,267 +76,430 @@ class i2c_driver extends uvm_driver # (i2c_item);
 
     if(is_master == 1)
     begin
-      // IDLE -> DRV_START -> DRV_SLAVE ADDRESS -> DRV_REG_ADD -> DRV_DATA/RCV_DATA -> DRV_STOP -> IDLE
-      forever
-      begin
-        case(curr_state)
-          IDLE:  
-            begin
-              //Master is the initiator.
-              //Stay in IDLE till able to fetch a new Sequence.
-              drv_vif.SCL = 1;
-              seq_item_port.get_next_item(packet);
-              next_state = DRV_START;
-            end
-          DRV_START: 
-            begin
-              // I2C start : 
-              // SCL  -------
-              // SDA  ---\___
-              @(negedge drv_vif.ref_clk);
-              drv_vif.SDA = 0;
-
-              #(`I2C_DELAY)
-              
-              //ALways release SDA after driving
-              drv_vif.SDA = 'z;
-              drv_vif.SCL = drv_vif.ref_clk;
-              next_state = DRV_SLAVE_ADDRESS; 
-            end
-          DRV_SLAVE_ADDRESS: 
-            begin
-              for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx++)
-              begin
-               @(negedge drv_vif.ref_clk);
-               drv_vif.SDA = packet.slave_address[indx];
-              end
-              
-              // Release SDA so that Slave can drive ACK
-              drv_vif.SDA = 'z;
-              next_state = RCV_ACK; 
-            end
-          DRV_REG_ADDRESS: 
-            begin
-              for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx++)
-              begin
-               @(negedge drv_vif.ref_clk);
-               drv_vif.SDA = packet.reg_address[indx];
-              end
-              
-              // Release SDA so that Slave can drive ACK
-              drv_vif.SDA = 'z;
-              next_state = RCV_ACK; 
-            end
-          DRV_DATA: 
-            begin
-              for(int indx = $size(packet.data) - 1; indx >= 0; indx++)
-              begin
-               @(negedge drv_vif.ref_clk);
-               drv_vif.SDA = packet.data[indx];
-              end
-
-              // Release SDA so that Slave can drive ACK
-              drv_vif.SDA = 'z;
-              next_state = RCV_ACK; 
-            end
-          RCV_DATA: 
-            begin
-              // Will Only RCV data if Slave ACK
-              for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx++)
-              begin
-               @(posedge drv_vif.SCL);
-               packet.data[indx] = drv_vif.SDA;
-              end
-
-              next_state = DRV_ACK;
-            end
-          RCV_ACK: 
-            begin
-              @(posedge drv_vif.SCL);
-              ack0_nack1 = drv_vif.SDA;
-
-              // ACK = 0 / NACK = 1
-              if(ack0_nack1 == 1)
-                next_state = IDLE;
-              else
-              begin
-                case(prev_state)
-                   DRV_SLAVE_ADDRESS : next_state = DRV_REG_ADDRESS; 
-                   DRV_REG_ADDRESS : next_state = (packet.wr_rd) ? DRV_DATA : RCV_DATA;
-                   DRV_DATA : next_state = DRV_STOP;
-                   default : 
-                     begin
-                       `uvm_error(get_full_name(), "Invalid State detected, Moving to IDLE")
-                       next_state = IDLE;
-                     end
-                endcase
-              end
-            end
-          DRV_ACK:
-            begin
-              // Master drives ACK only on receiving data
-              @(negedge drv_vif.SCL);
-              drv_vif.SDA = 1;
-
-              @(negedge drv_vif.SCL);
-              drv_vif.SDA = 'z;
-              
-              next_state = DRV_STOP;
-            end
-          DRV_STOP:
-            begin
-              // I2C Stop:
-              // SCL  __/------
-              // SDA  ____/----
-
-              @(posedge drv_vif.ref_clk);
-              drv_vif.SDA = 0;
-              drv_vif.SCL = 1;
-              
-              #(`I2C_DELAY);
-
-              drv_vif.SDA = 'z;
-              
-              next_state = IDLE; 
-              seq_item_port.item_done();
-            end
-          default:
-            begin
-              next_state = IDLE;
-              `uvm_error(get_full_name(), "Invalid State detected, Moving to IDLE")
-            end
-        endcase
-        
-        prev_state = curr_state;
-        curr_state = next_state;
-      end
+      fork
+        master_fsm();
+      join_none
     end
     else
     begin
-      // Detect Start -> RCV_SLAVE_ADDRESS -> RCV_REG_ADD -> DRV/RCV_DATA -> Detect_Start
-      forever
-      begin
-        case(curr_state)
-          RCV_START: 
-            begin
-              @(posedge drv_vif.SCL);
-              while(drv_vif.SCL == 1)
-              begin
-                @(negedge drv_vif.SDA);
-                packet = new();
-                packet.device =  i2c_item::SLAVE;
-                next_state = RCV_SLAVE_ADDRESS;
-              end
-            end
-          RCV_SLAVE_ADDRESS:
-            begin
-              for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx++)
-              begin
-                @(posedge drv_vif.SCL);
-                packet.slave_address[indx] = drv_vif.SDA;
-              end
-             
-              //Wr_Rd
-              @(posedge drv_vif.SCL);
-              packet.wr_rd = drv_vif.SDA;
-
-              // If Slave address matches drive ACK
-              // Else ignore and restart detecting Start
-              //
-              // Default SDA is 1 so Master will recieve NACK if only 1 slave
-              if(packet.wr_rd == `I2C_SLAVE_ADDRESS)
-              begin
-                ack0_nack1 = 0;
-                next_state = DRV_ACK;
-              end
-              else
-              begin
-                ack0_nack1 = 1;
-                next_state = RCV_START;
-              end
-            end
-          RCV_REG_ADDRESS:
-            begin
-              // Slave should respond since message is targeted to it
-              for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx++)
-              begin
-                @(posedge drv_vif.SCL);
-                packet.reg_address[indx] = drv_vif.SDA;
-              end
-
-              //Check address exist by using reg_read
-              ack0_nack1 = ~(register_map.reg_read(packet.reg_address, reg_data));
-              next_state = DRV_ACK;
-            end
-          DRV_ACK:
-            begin
-              @(negedge drv_vif.SCL);
-              drv_vif.SDA = ack0_nack1;
-              
-              @(negedge drv_vif.SCL);
-              drv_vif.SDA = 'z;
-
-              if(ack0_nack1 == 0)
-              begin
-                case(prev_state)
-                  RCV_SLAVE_ADDRESS : next_state = RCV_REG_ADDRESS;
-                  RCV_REG_ADDRESS : next_state = (ack0_nack1) ? RCV_START : (packet.wr_rd) ? RCV_DATA : DRV_DATA; 
-                  DRV_DATA : next_state = RCV_START; 
-                  default:
-                    begin
-                      `uvm_error(get_full_name(), "Invalid State detected, Moving to RCV_START")
-                      next_state = RCV_START;
-                    end
-                endcase
-              end
-              else
-              begin
-                next_state = RCV_START;
-              end
-            end
-          DRV_DATA:
-            begin
-              ack0_nack1 = ~(register_map.reg_read(packet.reg_address, packet.data));
-              
-              for(int indx = $size(packet.data) - 1; indx >= 0; indx++)
-              begin
-               @(negedge drv_vif.ref_clk);
-               drv_vif.SDA = packet.data[indx];
-              end
-
-              drv_vif.SDA = 'z;
-              next_state = RCV_ACK; 
-            end
-          RCV_DATA:
-            begin
-              for(int indx = $size(packet.data) - 1; indx >= 0; indx++)
-              begin
-               @(posedge drv_vif.ref_clk);
-               packet.data[indx] = drv_vif.SDA;
-              end
-
-              ack0_nack1 = ~(register_map.reg_write(packet.reg_address, packet.data));
-              next_state = DRV_ACK; 
-            end
-          RCV_ACK:
-            begin
-              @(posedge drv_vif.SCL);
-              ack0_nack1 = drv_vif.SDA;
-              next_state = IDLE;
-            end
-          default:
-            begin
-              next_state = RCV_START;
-              `uvm_error(get_full_name(), "Invalid State detected, Moving to RCV_START")
-            end
-        endcase
-      end
-
-      prev_state = curr_state;
-      curr_state = next_state;
+      fork
+        slave_fsm();
+      join_none
     end
 
   endtask: run_phase
+
+  virtual task master_fsm();
+    
+    forever
+    begin
+      `uvm_info(get_full_name(), $sformatf("Current_State = %s", curr_state.name()), UVM_HIGH)
+      case(curr_state)
+        ST_START: 
+          begin
+            //Master is the initiator.
+            //Stay IDLE till able to fetch a new Sequence.
+            // I2C start : 
+            // SCL  -------
+            // SDA  ---\___
+
+            drv_vif.SCL = 1;
+            seq_item_port.get_next_item(packet);
+
+            packet.print();
+            
+            repeat(`I2C_DELAY) @ (posedge drv_vif.ref_clk);
+            drv_vif.SDA = 0;
+            repeat(`I2C_DELAY) @ (posedge drv_vif.ref_clk);
+            
+            //DA_TODO : ASSERT SCLK
+            drv_vif.SCL = 0;
+            next_state = ST_SLAVE_ADDRESS;
+          end
+        ST_SLAVE_ADDRESS: 
+          begin
+            
+            `uvm_info(get_full_name(), $sformatf("Slave_Address = %0h", packet.slave_address), UVM_HIGH)
+            
+            for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx--)
+            begin
+              @(negedge drv_vif.SCL);
+              drv_vif.SDA = packet.slave_address[indx];
+            end
+            
+            `uvm_info(get_full_name(), $sformatf("WR_RD = %s", packet.wr_rd.name()), UVM_HIGH)
+            //Drive WR_RD
+            @(negedge drv_vif.SCL);
+            drv_vif.SDA = packet.wr_rd;
+
+            // SLAVE Will drive ACK/NACK on next negedge
+            // Release SDA
+            @(posedge drv_vif.SCL);
+            #(`I2C_CLK_PERIOD_US/4 * 1000);
+            drv_vif.SDA = 'z; 
+            @(negedge drv_vif.SCL);
+
+            //We sample at Posedge
+            @(posedge drv_vif.SCL);
+            ack0_nack1 = drv_vif.SDA;
+
+            // Check ACK/NACK
+            // ACK : Send REG_ADDRESS
+            // NACK : drop the packet, move to stop
+            if(ack0_nack1 ==0)
+            begin
+              next_state = ST_REG_ADDRESS;
+            end
+            else
+            begin
+              next_state = ST_STOP;
+            end
+          end
+        ST_REG_ADDRESS:
+          begin
+
+            `uvm_info(get_full_name(), $sformatf("Reg_Address = %0h", packet.reg_address), UVM_HIGH)
+            
+            for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx--)
+            begin
+              @(negedge drv_vif.SCL);
+              drv_vif.SDA = packet.reg_address[indx];
+            end
+              
+            // SLAVE Will drive ACK/NACK on next negedge
+            // Release SDA
+            @(posedge drv_vif.SCL);
+            #(`I2C_CLK_PERIOD_US/4 * 1000);
+            drv_vif.SDA = 'z; 
+            @(negedge drv_vif.SCL);
+
+            //We sample at Posedge
+            @(posedge drv_vif.SCL);
+            ack0_nack1 = drv_vif.SDA;
+            
+            // Check ACK/NACK
+            // ACK : DATA
+            // NACK : drop the packet, move to stop
+            if(ack0_nack1 ==0)
+            begin
+              next_state = ST_DATA;
+            end
+            else
+            begin
+              next_state = ST_STOP;
+            end
+          end
+        ST_DATA: 
+          begin
+            
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              `uvm_info(get_full_name(), $sformatf("DATA = %0h", packet.data), UVM_HIGH)
+            end
+
+            for(int indx = $size(packet.data) - 1; indx >= 0; indx--)
+            begin
+              if(packet.wr_rd == i2c_item::WRITE)
+              begin
+                @(negedge drv_vif.ref_clk);
+                drv_vif.SDA = packet.data[indx];
+              end
+              else
+              begin
+                @(posedge drv_vif.ref_clk);
+                packet.data[indx] = drv_vif.SDA;
+              end
+            end
+
+            if(packet.wr_rd == i2c_item::READ)
+            begin
+              `uvm_info(get_full_name(), $sformatf("DATA = %0h", packet.data), UVM_HIGH)
+            end
+
+            //ACK/NACK
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              //Release SDA
+              @(posedge drv_vif.SCL);
+              #(`I2C_CLK_PERIOD_US/4 * 1000);
+              drv_vif.SDA = 'z; 
+              @(negedge drv_vif.SCL);
+            
+              //We sample at Posedge
+              @(posedge drv_vif.SCL);
+              ack0_nack1 = drv_vif.SDA;
+              next_state = ST_STOP;
+            end
+            else
+            begin
+              // Master responds with ACK
+              @(negedge drv_vif.SCL);
+              drv_vif.SDA = 0; 
+
+              //Slave samples at posedge
+              @(posedge drv_vif.SCL);
+              @(negedge drv_vif.ref_clk);
+              next_state = ST_STOP;
+            end
+          end
+        ST_STOP:
+          begin
+            // I2C Stop:
+            // SCL  __/------
+            // SDA  ____/----
+            drv_vif.SCL = 1; 
+            drv_vif.SDA = 0; 
+            
+            repeat(`I2C_DELAY)
+            begin
+              @ (posedge drv_vif.ref_clk);
+            end
+
+            drv_vif.SDA = 1;
+
+            repeat(`I2C_DELAY)
+            begin
+              @ (posedge drv_vif.ref_clk);
+            end
+
+            next_state = ST_START;
+            seq_item_port.item_done();
+          end
+        default:
+          begin
+            next_state = ST_START;
+            `uvm_error(get_full_name(), "Invalid State detected, Moving to START")
+          end
+      endcase
+
+      curr_state = next_state;
+    end
+  
+  endtask : master_fsm
+
+  virtual task slave_fsm();
+
+    bit [9:0] start_scl;
+    bit [9:0] start_sda;
+    bit [9:0] stop_scl;
+    bit [9:0] stop_sda;
+    
+    // Continuously check for start stop
+    fork
+      begin
+        forever
+        begin
+          @(drv_vif.ref_clk);
+
+          start_scl = start_scl << 1;
+          start_scl[0] = drv_vif.SCL;
+
+          start_sda = start_sda << 1;
+          start_sda[0] = drv_vif.SDA;
+
+          if(start_sda == 10'b1_1111__0_0000 && start_scl == 10'b11_1111_1111)
+          begin
+            next_state = ST_SLAVE_ADDRESS;
+          end
+        end
+      end
+      begin
+        forever
+        begin
+          @(drv_vif.ref_clk);
+
+          stop_scl = stop_scl << 1;
+          stop_scl[0] = drv_vif.SCL;
+
+          stop_sda = stop_sda << 1;
+          stop_sda[0] = drv_vif.SDA;
+
+          if(stop_sda == 10'b0_0000__1_1111 && start_scl == 10'b11_1111_1111)
+          begin
+            next_state = ST_START;
+          end
+        end
+      end
+    join_none
+
+    forever
+    begin
+
+      `uvm_info(get_full_name(), $sformatf("Current_State = %s", curr_state.name()), UVM_HIGH)
+      
+      case(curr_state)
+        ST_START: 
+          begin
+            @(next_state);
+            packet = new("packet");
+          end
+        ST_SLAVE_ADDRESS: 
+          begin
+            for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx--)
+            begin
+              @(posedge drv_vif.SCL);
+              packet.slave_address[indx] = drv_vif.SDA;
+            end
+
+            `uvm_info(get_full_name(), $sformatf("Slave_Address = %0h", packet.slave_address), UVM_HIGH)
+            
+            // WR_RD
+            @(posedge drv_vif.SCL);
+            packet.wr_rd = drv_vif.SDA;
+
+            `uvm_info(get_full_name(), $sformatf("WR_RD = %s", packet.wr_rd.name()), UVM_HIGH)
+
+            // drive ACK/NACK on next negedge
+            @(negedge drv_vif.SCL);
+            ack0_nack1 = (packet.slave_address == `I2C_SLAVE_ADDRESS) ? 0 : 1; 
+            drv_vif.SDA = ack0_nack1; 
+
+            //Master sample at Posedge
+            @(posedge drv_vif.SCL);
+
+            // Release SDA 
+            #(`I2C_CLK_PERIOD_US/4 * 1000);
+            drv_vif.SDA = 'z; 
+            @(negedge drv_vif.SCL);
+
+            // Check ACK/NACK
+            // ACK : Send REG_ADDRESS
+            // NACK : drop the packet, move to stop
+            if(ack0_nack1 ==0)
+            begin
+              next_state = ST_REG_ADDRESS;
+            end
+            else
+            begin
+              next_state = ST_STOP;
+            end
+          end
+        ST_REG_ADDRESS:
+          begin
+            for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx--)
+            begin
+              @(posedge drv_vif.ref_clk);
+              packet.reg_address[indx] = drv_vif.SDA;
+            end
+              
+            `uvm_info(get_full_name(), $sformatf("Reg_Address = %0h", packet.reg_address), UVM_HIGH)
+
+            // Read the reg to check if reg exit
+            // For Write rewrite the same value
+            ack0_nack1 = ~(register_map.reg_read(.reg_addr(packet.reg_address), .reg_data(packet.data)));
+
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              ack0_nack1 = ~(register_map.reg_write(.reg_addr(packet.reg_address), .reg_data(packet.data)));
+            end
+
+            // Drive ACK/NACK on next negedge
+            @(negedge drv_vif.SCL);
+            drv_vif.SDA = ack0_nack1; 
+
+            //Master sample at Posedge
+            @(posedge drv_vif.SCL);
+
+            // If Read Slave drive, retain SDA
+            // If Write Master drive, release SDA
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              #(`I2C_CLK_PERIOD_US/4 * 1000);
+              drv_vif.SDA = 'z; 
+              @(negedge drv_vif.SCL);
+            end
+            
+            // Check ACK/NACK
+            // ACK : Send REG_ADDRESS
+            // NACK : drop the packet, move to stop
+            if(ack0_nack1 == 0)
+            begin
+              next_state = ST_DATA;
+            end
+            else
+            begin
+              next_state = ST_STOP;
+            end
+          end
+        ST_DATA: 
+          begin
+            if(packet.wr_rd == i2c_item::READ)
+            begin
+              `uvm_info(get_full_name(), $sformatf("DATA = %0h", packet.data), UVM_HIGH)
+            end
+
+            for(int indx = $size(packet.data) - 1; indx >= 0; indx--)
+            begin
+              if(packet.wr_rd == i2c_item::WRITE)
+              begin
+                @(posedge drv_vif.ref_clk);
+                packet.data[indx] = drv_vif.SDA;
+              end
+              else
+              begin
+                @(negedge drv_vif.ref_clk);
+                drv_vif.SDA = packet.data[indx];
+              end
+            end
+
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              `uvm_info(get_full_name(), $sformatf("DATA = %0h", packet.data), UVM_HIGH)
+            end
+
+            //ACK/NACK
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              // Write register
+              ack0_nack1 = ~(register_map.reg_write(.reg_addr(packet.reg_address), .reg_data(packet.data)));
+
+              //DRV ACK
+              @(negedge drv_vif.SCL);
+              drv_vif.SDA = ack0_nack1; 
+
+              //Master sample at Posedge
+              @(posedge drv_vif.SCL);
+
+              // Release SDA 
+              #(`I2C_CLK_PERIOD_US/4 * 1000);
+              drv_vif.SDA = 0; 
+              @(negedge drv_vif.SCL);
+
+              next_state = ST_STOP;
+            end
+            else
+            begin
+              //Master sample lat data bit at posedge
+              @(posedge drv_vif.ref_clk);
+
+              // Master drv ACK, Release SDA
+              #(`I2C_CLK_PERIOD_US/4 * 1000);
+              drv_vif.SDA = 'z; 
+              @(negedge drv_vif.ref_clk);
+              
+              //Sample ACK/NACK
+              @(posedge drv_vif.SCL);
+              ack0_nack1 = drv_vif.SDA;
+              
+              next_state = ST_STOP;
+            end
+          end
+        ST_STOP:
+          begin
+            @(next_state);
+            next_state = ST_START;
+          end
+        default:
+          begin
+            next_state = ST_START;
+            `uvm_error(get_full_name(), "Invalid State detected, Moving to START")
+          end
+      endcase
+
+      curr_state = next_state;
+    end
+  
+  endtask : slave_fsm
 
 endclass : i2c_driver
 

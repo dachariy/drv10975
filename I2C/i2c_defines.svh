@@ -6,5 +6,6 @@
 // 1KHZ : 1000us | 10khz : 100us | 1MHZ : 1us 
 `define I2C_CLK_PERIOD_US 100
 
-// Delay in ns
-`define I2C_DELAY 150
+// Delay in terms of refclk. Min 3
+// Delay - SDA_FOR_START_OR_STOP - DELAY
+`define I2C_DELAY 3

@@ -5,7 +5,7 @@
 
 class i2c_monitor extends uvm_monitor; 
 
-  typedef enum {ST_START, ST_SLAVE_ADDRESS, ST_ACK, ST_REG_ADDRESS, ST_DATA, ST_STOP} state_e;
+  typedef enum {ST_START, ST_SLAVE_ADDRESS, ST_REG_ADDRESS, ST_DATA, ST_STOP} state_e;
 
   virtual i2c_if mon_vif;
 
@@ -17,8 +17,9 @@ class i2c_monitor extends uvm_monitor;
   
   bit is_master;
   bit ack0_nack1;
+  bit [7:0] data;
 
-  state_e prev_state, next_state, curr_state;
+  state_e next_state, curr_state;
 
   // UVM Utility Macro
   `uvm_component_utils_begin(i2c_monitor)
@@ -71,119 +72,211 @@ class i2c_monitor extends uvm_monitor;
 
   //Run Phase
   virtual task run_phase(uvm_phase phase);
-    super.run_phase(phase);
+    
+    bit [9:0] start_scl;
+    bit [9:0] start_sda;
+    bit [9:0] stop_scl;
+    bit [9:0] stop_sda;
 
-    forever 
+    super.run_phase(phase);
+    
+    // Continuously check for start stop
+    fork
+      begin
+        forever
+        begin
+          @(mon_vif.ref_clk);
+
+          start_scl = start_scl << 1;
+          start_scl[0] = mon_vif.SCL;
+
+          start_sda = start_sda << 1;
+          start_sda[0] = mon_vif.SDA;
+
+          if(start_sda == 10'b1_1111__0_0000 && start_scl == 10'b11_1111_1111)
+          begin
+            if(curr_state != ST_START)
+            begin
+              `uvm_error("i2c_invalid_start_position", $sformatf("I2C start detected while expecting %s", curr_state.name()))
+            end
+            next_state = ST_SLAVE_ADDRESS;
+          end
+        end
+      end
+      begin
+        forever
+        begin
+          @(mon_vif.ref_clk);
+
+          stop_scl = stop_scl << 1;
+          stop_scl[0] = mon_vif.SCL;
+
+          stop_sda = stop_sda << 1;
+          stop_sda[0] = mon_vif.SDA;
+
+          if(stop_sda == 10'b0_0000__1_1111 && start_scl == 10'b11_1111_1111)
+          begin
+            if(curr_state != ST_STOP)
+            begin
+              `uvm_error("i2c_invalid_stop_position", $sformatf("I2C stop detected while expecting %s", curr_state.name()))
+            end
+            next_state = ST_START;
+          end
+        end
+      end
+    join_none
+
+    forever
     begin
+
+      `uvm_info(get_full_name(), $sformatf("Current_State = %s", curr_state.name()), UVM_HIGH)
+      
       case(curr_state)
         ST_START: 
           begin
-            @ (posedge mon_vif.SCL);
-            while (mon_vif.SCL == 1) 
-            begin
-              @(negedge mon_vif.SDA);
-              packet = new();
-              next_state = ST_SLAVE_ADDRESS;
-            end
+            @(next_state);
+            packet = new("packet");
           end
         ST_SLAVE_ADDRESS: 
           begin
-            for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx++)
-              begin
-                @(posedge mon_vif.SCL);
-                packet.slave_address[indx] = mon_vif.SDA;
-              end
-             
-            //Wr_Rd
-            @(posedge mon_vif.SCL);
-            packet.wr_rd = mon_vif.SDA;
-
-            if(packet.slave_address != `I2C_SLAVE_ADDRESS) 
-            begin
-              `uvm_error(get_full_name(), $sformatf("Invalid Slave Address detected. Driven Slave Address : %7h | Expected : %7h", packet.slave_address, `I2C_SLAVE_ADDRESS))  
-            end
-
-            next_state = ST_ACK;
-          end
-        ST_ACK: 
-          begin
-            @(posedge mon_vif.SCL);
-            ack0_nack1 = mon_vif.SDA;
-
-            case(prev_state)
-              ST_SLAVE_ADDRESS : 
-                begin
-                  // Check if ACK Driven for Invalid Address
-                  if((ack0_nack1 == 0) && (packet.slave_address != `I2C_SLAVE_ADDRESS))      
-                  begin
-                    `uvm_error(get_full_name(), "ACK recieved for invalid SLave Address")
-                    next_state = ST_REG_ADDRESS;
-                  end
-                  else if((ack0_nack1 == 1) && (packet.slave_address == `I2C_SLAVE_ADDRESS))
-                  begin
-                    `uvm_error(get_full_name(), "NACK driven for Valid Slave Address")
-                    next_state = ST_START;
-                  end
-                end
-              ST_REG_ADDRESS:
-                begin
-                  // ACK for Wr on RO register
-                  if(ack0_nack1 == 0 && packet.wr_rd == 1 &&  (packet.reg_address inside {[`STATUS : `SPDCMDBUFFER], `FAULTCODE})) 
-                  begin
-                    `uvm_error(get_full_name(), "ACK driven for register Write attempt on READ-ONLY Register");
-                    next_state = ST_DATA;
-                  end
-                  else
-                  begin
-                    next_state = ST_START;
-                  end
-                end
-              ST_DATA:
-                begin
-                  next_state = ST_STOP;
-                end
-            endcase
-          end
-        ST_REG_ADDRESS: 
-          begin
-            for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx++)
-            begin
-              @(posedge mon_vif.SCL);
-              packet.reg_address[indx] = mon_vif.SDA;
-            end
-            
-             if(packet.wr_rd == 1 && packet.reg_address inside {[`STATUS : `SPDCMDBUFFER], `FAULTCODE}) 
-             begin
-               `uvm_error(get_full_name(), "Register Write attempt on READ-ONLY Register");
-             end
-            next_state = ST_ACK;
-          end
-        ST_DATA: 
-          begin
-            for(int indx = $size(packet.data) - 1; indx >= 0; indx++)
+            for(int indx = $size(packet.slave_address) - 1; indx >= 0; indx--)
             begin
               @(posedge mon_vif.SCL);
               packet.slave_address[indx] = mon_vif.SDA;
             end
-            
-            next_state = ST_ACK;
 
+            if(packet.slave_address != `I2C_SLAVE_ADDRESS)
+            begin
+              `uvm_error("i2c_invalid_slv_addr", $sformatf("Slave address %0h recieved while expecting %0h", packet.slave_address, `I2C_SLAVE_ADDRESS))
+            end
+            else
+            begin
+              `uvm_info(get_full_name(), $sformatf("Slave_Address = %0h", packet.slave_address), UVM_HIGH)
+            end
+            
+            // WR_RD
+            @(posedge mon_vif.SCL);
+            packet.wr_rd = i2c_item::action_e'(mon_vif.SDA);
+
+            `uvm_info(get_full_name(), $sformatf("WR_RD = %s", packet.wr_rd.name()), UVM_HIGH)
+
+            // ACK/NACK 
+            @(posedge mon_vif.SCL);
+            ack0_nack1 = mon_vif.SDA;
+
+            // Check ACK/NACK
+            if(ack0_nack1 == 0 && packet.slave_address != `I2C_SLAVE_ADDRESS)
+            begin
+              `uvm_error("i2c_ack_invalid_slv_addr", $sformatf("ACK driven for invalid Slave address %0h", packet.slave_address))
+              next_state = ST_REG_ADDRESS;
+            end
+            else if(ack0_nack1 == 1 && packet.slave_address == `I2C_SLAVE_ADDRESS)
+            begin
+              `uvm_error("i2c_nack_valid_slv_addr", $sformatf("NACK driven for valid Slave address %0h", packet.slave_address))
+              next_state = ST_STOP;
+            end
+            else if(ack0_nack1 == 0 && packet.slave_address == `I2C_SLAVE_ADDRESS)
+            begin
+              `uvm_info(get_full_name(), $sformatf("ACK driven for Slave Address"), UVM_HIGH)
+              next_state = ST_REG_ADDRESS;
+            end
+            else 
+            begin
+              `uvm_info(get_full_name(), $sformatf("NACK driven for invalid Slave Address"), UVM_HIGH)
+              next_state = ST_STOP;
+            end
+          end
+        ST_REG_ADDRESS:
+          begin
+            for(int indx = $size(packet.reg_address) - 1; indx >= 0; indx--)
+            begin
+              @(posedge mon_vif.ref_clk);
+              packet.reg_address[indx] = mon_vif.SDA;
+            end
+              
+            `uvm_info(get_full_name(), $sformatf("Reg_Address = %0h", packet.reg_address), UVM_HIGH)
+
+            // Read the reg to check if reg exit
+            // For Write rewrite the same value
+            ack0_nack1 = ~(register_map.reg_read(.reg_addr(packet.reg_address), .reg_data(packet.data)));
+
+            if(ack0_nack1 == 1)
+            begin
+              `uvm_error("i2c_invalid_reg_addr", $sformatf("Invalid Register address %0h", packet.reg_address))
+            end
+
+            if(packet.wr_rd == i2c_item::WRITE)
+            begin
+              ack0_nack1 = ~(register_map.reg_write(.reg_addr(packet.reg_address), .reg_data(packet.data)));
+            end
+
+            if(ack0_nack1 == 1)
+            begin
+              `uvm_error("i2c_invalid_reg_addr", $sformatf("Write attempt on RO Register address %0h", packet.reg_address))
+            end
+
+            //ACK/NACK on next posedge
+            @(posedge mon_vif.SCL);
+
+            // Check ACK/NACK
+            if(ack0_nack1 == 0 && ack0_nack1 == mon_vif.SDA)
+            begin
+              next_state = ST_DATA;
+              `uvm_info(get_full_name(), $sformatf("ACK driven for Reg Address %0h", packet.reg_address), UVM_HIGH)
+            end
+            else if(ack0_nack1 == 1 && ack0_nack1 == mon_vif.SDA)
+            begin
+              `uvm_info(get_full_name(), $sformatf("ACK driven for Reg Address %0h", packet.reg_address), UVM_HIGH)
+              next_state = ST_STOP;
+            end
+            else if(ack0_nack1 == 0 && ack0_nack1 != mon_vif.SDA)
+            begin
+              `uvm_error("i2c_invalid_ack_reg_addr", $sformatf("ACK driven for Reg address %0h, while NACK was expected", packet.reg_address))
+              next_state = ST_DATA;
+            end
+            else if(ack0_nack1 != 0 && ack0_nack1 != mon_vif.SDA)
+            begin
+              `uvm_error("i2c_invalid_nack_reg_addr", $sformatf("NACK driven for Reg address %0h, while ACK was expected", packet.reg_address))
+              next_state = ST_STOP;
+            end
+          end
+        ST_DATA: 
+          begin
+            for(int indx = $size(packet.data) - 1; indx >= 0; indx--)
+            begin
+              @(posedge mon_vif.ref_clk);
+              packet.data[indx] = mon_vif.SDA;
+            end
+
+            //Sample ACK/NACK
+            @(posedge mon_vif.SCL);
+            ack0_nack1 = mon_vif.SDA;
+              
+            next_state = ST_STOP;
+
+            if(ack0_nack1 == 0)
+            begin
+              `uvm_info(get_full_name(), $sformatf("ACK driven for Data"), UVM_HIGH)
+            end
+            else
+            begin
+              `uvm_error("i2c_nack_data", $sformatf("NACK driven for Data"))
+            end
           end
         ST_STOP:
           begin
-            while (mon_vif.SCL == 1) 
-            begin
-              @(posedge mon_vif.SDA);
-              mon_ap.write(packet);
-              next_state = ST_START;
-            end
+            @(next_state);
+            mon_ap.write(packet);
+          end
+        default:
+          begin
+            next_state = ST_START;
+            `uvm_error(get_full_name(), "Invalid State detected, Moving to START")
           end
       endcase
 
-      prev_state = curr_state;
       curr_state = next_state;
     end
-
   endtask: run_phase
 
 endclass : i2c_monitor

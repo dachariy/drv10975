@@ -33,5 +33,18 @@
   `define SYSOPT8       8'h2A
   `define SYSOPT9       8'h2B
 
+  `define MOTORPARAM1_DEFAULT   8'h4A
+  `define MOTORPARAM2_DEFAULT   8'h4E
+  `define MOTORPARAM3_DEFAULT   8'h2A
+  `define SYSOPT1_DEFAULT       8'h00
+  `define SYSOPT2_DEFAULT       8'h98
+  `define SYSOPT3_DEFAULT       8'hE4
+  `define SYSOPT4_DEFAULT       8'h7A
+  `define SYSOPT5_DEFAULT       8'hF4
+  `define SYSOPT6_DEFAULT       8'h69
+  `define SYSOPT7_DEFAULT       8'hB8
+  `define SYSOPT8_DEFAULT       8'hAD
+  `define SYSOPT9_DEFAULT       8'h0C
+
 `endif
 
