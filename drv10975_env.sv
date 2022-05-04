@@ -5,7 +5,7 @@
 class drv10975_env extends uvm_env;
 
   i2c_agent i2c_ag;
-  drv10975_scoreboard i2c_scbd;
+  i2c_scoreboard i2c_scbd;
 
   drv10975_register_map register_map;
 
@@ -60,7 +60,7 @@ class drv10975_env extends uvm_env;
     uvm_config_db #(drv10975_register_map)::set(this, "*", "register_map", register_map);
 
     i2c_ag = i2c_agent::type_id::create("i2c_agent", this);
-    i2c_scbd  = drv10975_scoreboard::type_id::create("i2c_scbd", this);
+    i2c_scbd  = i2c_scoreboard::type_id::create("i2c_scbd", this);
   endfunction : build_phase
 
   //Connect Phase

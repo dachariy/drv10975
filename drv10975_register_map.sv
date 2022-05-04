@@ -168,18 +168,18 @@ class drv10975_register_map extends uvm_sequence_item;
 
     super.new(name);
 
-    temp = reg_write(MOTORPARAM1, MOTORPARAM1_DEFAULT);
-    temp = reg_write(MOTORPARAM2, MOTORPARAM2_DEFAULT);
-    temp = reg_write(MOTORPARAM3, MOTORPARAM3_DEFAULT);
-    temp = reg_write(SYSOPT1, SYSOPT1_DEFAULT);
-    temp = reg_write(SYSOPT2, SYSOPT2_DEFAULT);
-    temp = reg_write(SYSOPT3, SYSOPT3_DEFAULT);
-    temp = reg_write(SYSOPT4, SYSOPT4_DEFAULT);
-    temp = reg_write(SYSOPT5, SYSOPT5_DEFAULT);
-    temp = reg_write(SYSOPT6, SYSOPT6_DEFAULT);
-    temp = reg_write(SYSOPT7, SYSOPT7_DEFAULT);
-    temp = reg_write(SYSOPT8, SYSOPT8_DEFAULT);
-    temp = reg_write(SYSOPT9, SYSOPT9_DEFAULT);
+    temp = reg_write(`MOTORPARAM1, `MOTORPARAM1_DEFAULT);
+    temp = reg_write(`MOTORPARAM2, `MOTORPARAM2_DEFAULT);
+    temp = reg_write(`MOTORPARAM3, `MOTORPARAM3_DEFAULT);
+    temp = reg_write(`SYSOPT1, `SYSOPT1_DEFAULT);
+    temp = reg_write(`SYSOPT2, `SYSOPT2_DEFAULT);
+    temp = reg_write(`SYSOPT3, `SYSOPT3_DEFAULT);
+    temp = reg_write(`SYSOPT4, `SYSOPT4_DEFAULT);
+    temp = reg_write(`SYSOPT5, `SYSOPT5_DEFAULT);
+    temp = reg_write(`SYSOPT6, `SYSOPT6_DEFAULT);
+    temp = reg_write(`SYSOPT7, `SYSOPT7_DEFAULT);
+    temp = reg_write(`SYSOPT8, `SYSOPT8_DEFAULT);
+    temp = reg_write(`SYSOPT9, `SYSOPT9_DEFAULT);
   endfunction : new
 
   function bit reg_read(input [7:0] reg_addr, output [7:0] reg_data);

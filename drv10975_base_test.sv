@@ -9,6 +9,8 @@ class drv10975_base_test extends uvm_test;
   drv10975_env dut_env;
   drv10975_env tb_env;
 
+  i2c_e2e_scoreboard i2c_e2e_scbd;
+
   //Constructor 
   function new(string name = "drv10975_base_test", uvm_component parent = null);
     super.new(name, parent);
@@ -20,6 +22,7 @@ class drv10975_base_test extends uvm_test;
 
     dut_env = drv10975_env::type_id::create("dut_env", this);
     tb_env  = drv10975_env::type_id::create("tb_env", this);
+    i2c_e2e_scbd = i2c_e2e_scoreboard::type_id::create("i2c_e2e_scbd", this);
 
     //Pass necessary config to ENVs
     uvm_config_db#(bit)::set(dut_env, "", "is_dut", 1);
@@ -32,6 +35,9 @@ class drv10975_base_test extends uvm_test;
   //Connect Phase
   virtual function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
+
+    dut_env.i2c_ag.monitor.mon_ap.connect(i2c_e2e_scbd.dut_fifo.analysis_export);
+    tb_env.i2c_ag.monitor.mon_ap.connect(i2c_e2e_scbd.tb_fifo.analysis_export);
   endfunction : connect_phase
 
   //End Of Elaboration Phase

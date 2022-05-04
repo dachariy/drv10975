@@ -10,6 +10,8 @@ package drv10975_pkg;
   `include "I2C/i2c_item.sv"
   `include "I2C/i2c_sequence.sv"
   `include "drv10975_register_map.sv"
+  `include "I2C/i2c_scoreboard.sv"
+  `include "I2C/i2c_e2e_scoreboard.sv"
   `include "I2C/i2c_driver.sv"
   `include "I2C/i2c_monitor.sv"
   `include "I2C/i2c_agent.sv"
