@@ -46,6 +46,21 @@ class i2c_e2e_scoreboard extends uvm_scoreboard;
       
   endtask: run_phase
 
+  function void check_phase(uvm_phase phase);
+    super.check_phase(phase);
+
+    if(!dut_fifo.is_empty())
+    begin
+      `uvm_error("i2c_e2e_scbd_dut_fifo_nempty", "DUT fifo is not empty")
+    end
+
+    if(!tb_fifo.is_empty())
+    begin
+      `uvm_error("i2c_e2e_scbd_tb_fifo_nempty", "TB fifo is not empty")
+    end
+
+  endfunction : check_phase
+
 endclass : i2c_e2e_scoreboard
 
 `endif
