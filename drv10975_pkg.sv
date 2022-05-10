@@ -5,6 +5,16 @@
 
 package drv10975_pkg;
   import uvm_pkg::*;
+  `include "phase/placeholder.sv"
+  `include "phase/phase_item.sv"
+  `include "phase/phase_driver.sv"
+  `include "phase/phase_seqr.sv"
+  `include "phase/phase_sequence.sv"
+  `include "phase/phase_monitor.sv"
+  `include "phase/phase_agent.sv"
+  `include "phase/phase_test.sv"
+  
+
   `include "drv10975_defines.svh"
   `include "I2C/i2c_defines.svh"
   `include "I2C/i2c_item.sv"

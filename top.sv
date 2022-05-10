@@ -2,7 +2,7 @@
 
 `include "I2C/i2c_defines.svh"
 `include "I2C/i2c_if.sv"
-
+`include "phase/phase_if.sv"
 `include "drv10975_pkg.sv"
 
 module top();
@@ -14,6 +14,8 @@ module top();
   // Interface instance
   i2c_if i2c_vif(ref_clk);
 
+  phase_if phase_vif();
+
   initial
   begin
     ref_clk = 0;
@@ -23,6 +25,7 @@ module top();
   initial 
   begin
     uvm_config_db #(virtual i2c_if)::set(null, "*", "i2c_vif", i2c_vif);
+    uvm_config_db #(virtual phase_if)::set(null, "*", "phase_vif", phase_vif);
     run_test("drv10975_base_test");
   end
 
