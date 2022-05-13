@@ -3,7 +3,7 @@
 `ifndef DRV10975_REGISTER_MAP
 `define DRV1095_REGISTER_MAP
 
-class drv10975_register_map extends uvm_sequence_item;
+class drv10975_register_map extends uvm_object;
 
   //Register Fields
   bit [08:00] SpdCtrl;
@@ -220,7 +220,6 @@ class drv10975_register_map extends uvm_sequence_item;
        `SYSOPT9       : reg_data = {FGOLsel, FGcycle, KtLckThr, SpdCtrlMd, CLoopDis};
        default:
          begin
-           `uvm_warning(get_full_name(), "Invalid Address read.");
            reg_data = 0;
            reg_read = 0;
          end
@@ -272,7 +271,6 @@ class drv10975_register_map extends uvm_sequence_item;
         `SYSOPT9       : {FGOLsel, FGcycle, KtLckThr, SpdCtrlMd, CLoopDis} = reg_data;
         default:
           begin
-            `uvm_warning(get_full_name(), "Invalid Address write.");
             reg_write = 0;
           end
       endcase

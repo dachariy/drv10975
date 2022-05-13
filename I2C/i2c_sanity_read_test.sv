@@ -26,6 +26,10 @@ class i2c_sanity_read_test extends drv10975_base_test;
 
     super.run_phase(phase);
     
+    i2c_test_seq.randomize();
+    
+    `uvm_info(get_name(), $sformatf("starting sequnce : %s", i2c_test_seq.get_type_name), UVM_LOW)
+
     i2c_test_seq.start(tb_env.i2c_ag.sequencer);
     
     phase.drop_objection(this);

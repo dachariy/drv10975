@@ -2,8 +2,7 @@
 change
 csrc
 *.log
-simv
-simv.daidir
+simv*
 ucli.key
 vc_hdrs.h
 waves.vcd
