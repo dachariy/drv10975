@@ -30,6 +30,8 @@ package drv10975_pkg;
   `include "drv10975_base_test.sv"
   
   `include "I2C/i2c_sanity_read_test.sv"
+  `include "I2C/i2c_wrong_slv_addr_test.sv"
+  `include "I2C/i2c_invalid_reg_addr_test.sv"
 endpackage
 
 `endif
