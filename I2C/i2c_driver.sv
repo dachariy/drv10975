@@ -152,6 +152,7 @@ class i2c_driver extends uvm_driver # (i2c_item);
             end
             else
             begin
+              @(negedge drv_vif.SCL);
               next_state = ST_STOP;
             end
           end
@@ -186,6 +187,7 @@ class i2c_driver extends uvm_driver # (i2c_item);
             end
             else
             begin
+              @(negedge drv_vif.SCL);
               next_state = ST_STOP;
             end
           end
@@ -228,6 +230,7 @@ class i2c_driver extends uvm_driver # (i2c_item);
               //We sample at Posedge
               @(posedge drv_vif.SCL);
               ack0_nack1 = drv_vif.SDA;
+              @(negedge drv_vif.SCL);
               next_state = ST_STOP;
             end
             else

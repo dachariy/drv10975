@@ -1,5 +1,4 @@
-*.swp
-*.swo
+*.sw*
 change
 csrc
 *.log
@@ -8,3 +7,4 @@ simv.daidir
 ucli.key
 vc_hdrs.h
 waves.vcd
+.nfs*
