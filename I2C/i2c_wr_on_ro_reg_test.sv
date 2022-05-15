@@ -2,7 +2,7 @@
 `ifndef I2C_WR_ON_RO_REG_TEST 
 `define I2C_WR_ON_RO_REG_TEST
 
-class i2c_wr_on_ro_reg_seq extends i2c_sequence; 
+class i2c_wr_on_ro_reg_seq extends i2c_read_write_sequence; 
 
   `uvm_object_utils(i2c_wr_on_ro_reg_seq)
 
@@ -34,7 +34,7 @@ class i2c_wr_on_ro_reg_test extends i2c_sanity_read_test;
 
   //Build Phase
   virtual function void build_phase(uvm_phase phase);
-    set_type_override_by_type(i2c_sequence::get_type(), i2c_wr_on_ro_reg_seq::get_type());
+    set_type_override_by_type(i2c_read_write_sequence::get_type(), i2c_wr_on_ro_reg_seq::get_type());
     super.build_phase(phase);
   endfunction : build_phase
 

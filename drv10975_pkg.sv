@@ -17,8 +17,14 @@ package drv10975_pkg;
   `include "drv10975_defines.svh"
   `include "I2C/i2c_defines.svh"
   `include "I2C/i2c_item.sv"
-  `include "I2C/i2c_sequence.sv"
+
+  `include "I2C/i2c_base_sequence.sv"
+  `include "I2C/i2c_read_sequence.sv"
+  `include "I2C/i2c_read_write_sequence.sv"
+  `include "I2C/i2c_write_sequence.sv"
+
   `include "drv10975_register_map.sv"
+  
   `include "I2C/i2c_scoreboard.sv"
   `include "I2C/i2c_e2e_scoreboard.sv"
   `include "I2C/i2c_driver.sv"

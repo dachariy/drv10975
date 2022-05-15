@@ -95,6 +95,19 @@ class drv10975_register_map extends uvm_object;
   bit [00:00] SpdCtrlMd;
   bit [00:00] CLoopDis;
 
+  bit [07:00] motorparam1_reg;
+  bit [07:00] motorparam2_reg;
+  bit [07:00] motorparam3_reg;
+  bit [07:00] sysopt1_reg;
+  bit [07:00] sysopt2_reg;
+  bit [07:00] sysopt3_reg;
+  bit [07:00] sysopt4_reg;
+  bit [07:00] sysopt5_reg;
+  bit [07:00] sysopt6_reg;
+  bit [07:00] sysopt7_reg;
+  bit [07:00] sysopt8_reg;
+  bit [07:00] sysopt9_reg;
+
   //UVM Automation Macro
   `uvm_object_utils_begin(drv10975_register_map)
     `uvm_field_int(SpdCtrl,       UVM_ALL_ON)
@@ -168,18 +181,32 @@ class drv10975_register_map extends uvm_object;
 
     super.new(name);
 
-    temp = reg_write(`MOTORPARAM1, `MOTORPARAM1_DEFAULT);
-    temp = reg_write(`MOTORPARAM2, `MOTORPARAM2_DEFAULT);
-    temp = reg_write(`MOTORPARAM3, `MOTORPARAM3_DEFAULT);
-    temp = reg_write(`SYSOPT1, `SYSOPT1_DEFAULT);
-    temp = reg_write(`SYSOPT2, `SYSOPT2_DEFAULT);
-    temp = reg_write(`SYSOPT3, `SYSOPT3_DEFAULT);
-    temp = reg_write(`SYSOPT4, `SYSOPT4_DEFAULT);
-    temp = reg_write(`SYSOPT5, `SYSOPT5_DEFAULT);
-    temp = reg_write(`SYSOPT6, `SYSOPT6_DEFAULT);
-    temp = reg_write(`SYSOPT7, `SYSOPT7_DEFAULT);
-    temp = reg_write(`SYSOPT8, `SYSOPT8_DEFAULT);
-    temp = reg_write(`SYSOPT9, `SYSOPT9_DEFAULT);
+    motorparam1_reg = `MOTORPARAM1_DEFAULT;
+    motorparam2_reg = `MOTORPARAM2_DEFAULT;
+    motorparam3_reg = `MOTORPARAM3_DEFAULT;
+    sysopt1_reg     = `SYSOPT1_DEFAULT;
+    sysopt2_reg     = `SYSOPT2_DEFAULT;
+    sysopt3_reg     = `SYSOPT3_DEFAULT;
+    sysopt4_reg     = `SYSOPT4_DEFAULT;
+    sysopt5_reg     = `SYSOPT5_DEFAULT;
+    sysopt6_reg     = `SYSOPT6_DEFAULT;
+    sysopt7_reg     = `SYSOPT7_DEFAULT;
+    sysopt8_reg     = `SYSOPT8_DEFAULT;
+    sysopt9_reg     = `SYSOPT9_DEFAULT;
+
+    temp = reg_write(`MOTORPARAM1, motorparam1_reg);
+    temp = reg_write(`MOTORPARAM2, motorparam2_reg);
+    temp = reg_write(`MOTORPARAM3, motorparam3_reg);
+    temp = reg_write(`SYSOPT1, sysopt1_reg);
+    temp = reg_write(`SYSOPT2, sysopt2_reg);
+    temp = reg_write(`SYSOPT3, sysopt3_reg);
+    temp = reg_write(`SYSOPT4, sysopt4_reg);
+    temp = reg_write(`SYSOPT5, sysopt5_reg);
+    temp = reg_write(`SYSOPT6, sysopt6_reg);
+    temp = reg_write(`SYSOPT7, sysopt7_reg);
+    temp = reg_write(`SYSOPT8, sysopt8_reg);
+    temp = reg_write(`SYSOPT9, sysopt9_reg);
+
   endfunction : new
 
   function bit reg_read(input [7:0] reg_addr, output [7:0] reg_data);
@@ -274,9 +301,60 @@ class drv10975_register_map extends uvm_object;
             reg_write = 0;
           end
       endcase
+
+      //EEPROM Update
+      if(reg_addr == `EECTRL && eeWrite == 1 && enProgKey == 8'hB6)
+      begin
+        eeWrite = 0;
+        motorparam1_reg = {DoubleFreq, Rm};
+        motorparam2_reg = {AdjMode, Kt};
+        motorparam3_reg = {CtrlAdvMd, TCtrlAdv};
+        sysopt1_reg     = {ISDThr, IPDAdvcAgl, ISDen, RvsDrEn, RvsDrThr};
+        sysopt2_reg     = {OpenLCurr, OpenLCurrRt, BrkDoneThr};
+        sysopt3_reg     = {CtrlCoef, StAccel2, StAccel};
+        sysopt4_reg     = {Op2ClsThr, AlignTime};
+        sysopt5_reg     = {LockEn, AVSIndEn, AVSMEn, AVSMMd, IPDRlsMd};
+        sysopt6_reg     = {SWiLimitThr, HWiLimitThr, 1'b0};
+        sysopt7_reg     = {LockEn5, ClsLpAccel, Deadtime};
+        sysopt8_reg     = {IPDCurrThr, LockEn4, VregSel, IPDClk};
+        sysopt9_reg     = {FGOLsel, FGcycle, KtLckThr, SpdCtrlMd, CLoopDis};
+      end
     end
 
   endfunction : reg_write
+
+  function reset();
+    {SpdCtrl[7:0]}                                    = 'h0;
+    {OverRide, SpdCtrl[8]}                            = 'h0;
+    {enProgKey}                                       = 'h0;
+    {sleepDis, Sldata, eeRefresh, eeWrite}            = 'h0;
+    {OverTemp, Slp_Stdby, OverCurr, MtrLck}           = 'h0;
+    {MotorSpeed[15:8]}                                = 'h0;
+    {MotorSpeed[7:0]}                                 = 'h0;
+    {MotorPeriod[15:0]}                               = 'h0;
+    {MotorPeriod[7:0]}                                = 'h0;
+    {MotorKt[15:0]}                                   = 'h0;
+    {MotorKt[7:0]}                                    = 'h0;
+    {MotorCurrent[10:8]}                              = 'h0;
+    {MotorCurrent[7:0]}                               = 'h0;
+    {IPDPosition}                                     = 'h0;
+    {SupplyVoltage}                                   = 'h0;
+    {SpeedCmd}                                        = 'h0;
+    {spdCmdBuffer}                                    = 'h0;
+    {Lock5, Lock4, Fault3, Lock2, Lock1, Lock0}       = 'h0;
+    {DoubleFreq, Rm}                                  = motorparam1_reg;
+    {AdjMode, Kt}                                     = motorparam2_reg;
+    {CtrlAdvMd, TCtrlAdv}                             = motorparam3_reg;
+    {ISDThr, IPDAdvcAgl, ISDen, RvsDrEn, RvsDrThr}    = sysopt1_reg;
+    {OpenLCurr, OpenLCurrRt, BrkDoneThr}              = sysopt2_reg;
+    {CtrlCoef, StAccel2, StAccel}                     = sysopt3_reg;
+    {Op2ClsThr, AlignTime}                            = sysopt4_reg;
+    {LockEn, AVSIndEn, AVSMEn, AVSMMd, IPDRlsMd}      = sysopt5_reg;
+    {SWiLimitThr, HWiLimitThr}                        = sysopt6_reg[7:1];
+    {LockEn5, ClsLpAccel, Deadtime}                   = sysopt7_reg;
+    {IPDCurrThr, LockEn4, VregSel, IPDClk}            = sysopt8_reg;
+    {FGOLsel, FGcycle, KtLckThr, SpdCtrlMd, CLoopDis} = sysopt9_reg;
+  endfunction : reset 
 
 endclass : drv10975_register_map
 

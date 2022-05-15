@@ -18,7 +18,7 @@ class i2c_inv_reg_item extends i2c_item;
 
 endclass : i2c_inv_reg_item
 
-class i2c_invalid_reg_addr_seq extends i2c_sequence; 
+class i2c_invalid_reg_addr_seq extends i2c_read_write_sequence; 
 
   `uvm_object_utils(i2c_invalid_reg_addr_seq)
 
@@ -49,7 +49,7 @@ class i2c_invalid_reg_addr_test extends i2c_sanity_read_test;
 
   //Build Phase
   virtual function void build_phase(uvm_phase phase);
-    set_type_override_by_type(i2c_sequence::get_type(), i2c_invalid_reg_addr_seq::get_type());
+    set_type_override_by_type(i2c_read_write_sequence::get_type(), i2c_invalid_reg_addr_seq::get_type());
     super.build_phase(phase);
   endfunction : build_phase
 

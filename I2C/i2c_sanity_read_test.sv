@@ -4,7 +4,7 @@
 
 class i2c_sanity_read_test extends drv10975_base_test;
   
-  i2c_sequence i2c_test_seq;
+  i2c_read_write_sequence i2c_test_seq;
 
   `uvm_component_utils(i2c_sanity_read_test)
 
@@ -17,7 +17,7 @@ class i2c_sanity_read_test extends drv10975_base_test;
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
 
-    i2c_test_seq = i2c_sequence::type_id::create("i2c_test_seq", this);
+    i2c_test_seq = i2c_read_write_sequence::type_id::create("i2c_test_seq");
   endfunction : build_phase
 
   //Run Phase

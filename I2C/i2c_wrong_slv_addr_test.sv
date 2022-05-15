@@ -21,7 +21,7 @@ endclass : i2c_wrong_slv_addr_item
 
 class i2c_wrong_slv_addr_test extends drv10975_base_test;
 
-  i2c_sequence i2c_test_seq;
+  i2c_read_write_sequence i2c_test_seq;
 
   `uvm_component_utils(i2c_wrong_slv_addr_test)
 
@@ -34,7 +34,7 @@ class i2c_wrong_slv_addr_test extends drv10975_base_test;
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
     set_type_override_by_type(i2c_item::get_type(), i2c_wrong_slv_addr_item::get_type());
-    i2c_test_seq = i2c_sequence::type_id::create("i2c_test_seq", this);
+    i2c_test_seq = i2c_read_write_sequence::type_id::create("i2c_test_seq", this);
   endfunction : build_phase
 
   //Run Phase
