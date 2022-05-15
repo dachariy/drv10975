@@ -8,7 +8,9 @@ class i2c_scoreboard extends uvm_scoreboard;
 
   drv10975_register_map register_map;
 
-  `uvm_component_utils(i2c_scoreboard)
+  `uvm_component_utils_begin(i2c_scoreboard)
+    `uvm_field_object(register_map, UVM_DEFAULT)
+  `uvm_component_utils_end
 
   uvm_analysis_imp #(i2c_item, i2c_scoreboard) ap_imp;
 
@@ -33,6 +35,16 @@ class i2c_scoreboard extends uvm_scoreboard;
     bit [7:0] reg_data;
 
     reg_access = register_map.reg_read(.reg_addr(packet.reg_address), .reg_data(reg_data));
+
+    //Ignore Invalid fields
+    case(packet.reg_address)
+      `SPEEDCTRL2 :    packet.data[6:1] = 0;
+      `EECTRL :        packet.data[4:0] = 0;
+      `STATUS :        packet.data[3:0] = 0;
+      `MOTORCURRENT1 : packet.data[7:3] = 0;
+      `FAULTCODE :     packet.data[7:6] = 0;
+      `SYSOPT6 :       packet.data[0:0] = 0;   
+    endcase
 
     if(reg_data != packet.data)
     begin

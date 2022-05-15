@@ -16,6 +16,7 @@ class drv10975_env extends uvm_env;
   //UVM Utility Macro
   `uvm_component_utils_begin(drv10975_env)
     `uvm_field_int(is_dut, UVM_ALL_ON)
+    `uvm_field_object(register_map, UVM_DEFAULT)
   `uvm_component_utils_end
 
   //Constructor 

@@ -50,7 +50,7 @@ class i2c_base_sequence extends uvm_sequence # (i2c_item);
 
   virtual task reg_read (input bit [7:0] addr); 
 
-    `uvm_do_with(req, {req.reg_address == addr; req.wr_rd == READ;})
+    `uvm_do_with(req, {req.reg_address == addr; req.wr_rd == READ; req.data == 0;})
       
   endtask: reg_read
 

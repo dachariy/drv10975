@@ -14,6 +14,7 @@ class i2c_read_sequence extends i2c_base_sequence;
 
   virtual task body();
     reg_read(reg_addr);
+    data = req.data;
   endtask : body
 
 endclass : i2c_read_sequence

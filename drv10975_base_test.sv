@@ -4,7 +4,6 @@
 
 class drv10975_base_test extends uvm_test;
   
-  `uvm_component_utils(drv10975_base_test)
 
   drv10975_register_map register_map;
 
@@ -14,6 +13,11 @@ class drv10975_base_test extends uvm_test;
   string demoted_error_q[$];
 
   i2c_e2e_scoreboard i2c_e2e_scbd;
+  
+  `uvm_component_utils_begin(drv10975_base_test)
+    `uvm_field_object(register_map, UVM_DEFAULT)
+  `uvm_component_utils_end
+
 
 
   //Constructor 

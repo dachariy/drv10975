@@ -39,6 +39,7 @@ package drv10975_pkg;
   `include "I2C/i2c_wrong_slv_addr_test.sv"
   `include "I2C/i2c_invalid_reg_addr_test.sv"
   `include "I2C/i2c_wr_on_ro_reg_test.sv"
+  `include "drv10975_eeprom_test.sv"
 endpackage
 
 `endif
