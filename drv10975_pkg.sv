@@ -13,8 +13,6 @@ package drv10975_pkg;
   `include "phase/phase_monitor.sv"
   `include "phase/phase_scoreboard.sv"
   `include "phase/phase_agent.sv"
-  
-  
 
   `include "drv10975_defines.svh"
   `include "I2C/i2c_defines.svh"
@@ -34,6 +32,7 @@ package drv10975_pkg;
   `include "I2C/i2c_sanity_read_test.sv"
   `include "I2C/i2c_wrong_slv_addr_test.sv"
   `include "I2C/i2c_invalid_reg_addr_test.sv"
+  `include "I2C/i2c_wr_on_ro_reg_test.sv"
 endpackage
 
 `endif
