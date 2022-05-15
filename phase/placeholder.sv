@@ -54,8 +54,8 @@ virtual task run_phase(uvm_phase phase);
             speed_to_table = int'((current_speed / thres) * 8'hFF);
             /*
             if(is_dut == 1)
-                //$display("Current speed: %f, current threshold: %f, speedtotable: %b", current_speed, thres, speed_to_table);
-                $display("fo: %e, so: %e, Current Time: %f, initial time: %f, currentspeed: %f, thres: %f", fo, so, $realtime, initial_time, current_speed, thres);
+                //`uvm_info(get_name(), $sformatf("Current speed: %f, current threshold: %f, speedtotable: %b", current_speed, thres, speed_to_table), UVM_LOW)
+                `uvm_info(get_name(), $sformatf("fo: %e, so: %e, Current Time: %f, initial time: %f, currentspeed: %f, thres: %f", fo, so, $realtime, initial_time, current_speed, thres), UVM_LOW)
             */
             speed_port.write(speed_to_table);
         end
@@ -66,9 +66,9 @@ virtual task run_phase(uvm_phase phase);
 endtask
 
 function void write(string val);
-    $display("val: %s", val);
+    `uvm_info(get_full_name(), $sformatf("val: %s", val), UVM_HIGH)
     if (val == "initial") begin
-            //$display("INITIAL FOR SPEED BOX");
+            //`uvm_info(get_name(), $sformatf("INITIAL FOR SPEED BOX"), UVM_LOW)
            current_speed = 0;
            thres = 0;
            speed_cmd = 0;
@@ -76,18 +76,18 @@ function void write(string val);
 
     if (val == "updated") begin
             register_map.reg_read(.reg_addr(8'h1b), .reg_data(speed_cmd));
-            $display("%b, Read in Speed", speed_cmd);
+            `uvm_info(get_name(), $sformatf("%b, Read in Speed", speed_cmd), UVM_LOW)
             //speed_port.write(speed);
             initial_time = $realtime;
             inter1 = speed_cmd;
 
             percent_speed = inter1 / 8'hFF;
-            $display("Percent_speed: %f", percent_speed);
+            `uvm_info(get_name(), $sformatf("Percent_speed: %f", percent_speed), UVM_LOW)
             register_map.reg_read(.reg_addr(8'h26), .reg_data(closed_loop_data));
             closed_loop_threshold = closed_loop_data[7:3];
-            $display("%b, Read in closed loop", closed_loop_threshold);
+            `uvm_info(get_name(), $sformatf("%b, Read in closed loop", closed_loop_threshold), UVM_LOW)
             register_map.reg_read(.reg_addr(8'h25), .reg_data(accel_data)); 
-            $display("%b, Read in accel_date", accel_data);
+            `uvm_info(get_name(), $sformatf("%b, Read in accel_date", accel_data), UVM_LOW)
 
             accel_fo = accel_data[2:0];
             accel_so = accel_data[5:3];
@@ -181,6 +181,7 @@ function new(string name="phase_table", uvm_component parent = null);
 endfunction: new
 
 virtual function void build_phase (uvm_phase phase);
+  bit temp;
 	super.build_phase (phase);
 
     if(!uvm_config_db #(bit)::get(this, "*", "is_dut", is_dut))
@@ -203,7 +204,7 @@ virtual function void build_phase (uvm_phase phase);
     fd = $fopen("./phase/wave.txt", "r");
     if (fd) begin
         while (!$feof(fd)) begin
-            $fgets(line, fd);
+           temp =  $fgets(line, fd);
             values[counter] = line.atoreal();
             counter += 1;
         end
@@ -213,13 +214,13 @@ virtual function void build_phase (uvm_phase phase);
     
     else
         `uvm_fatal("FILE", "File could not be opened");
-    //$display(values);
+    //`uvm_info(get_name(), $sformatf(values), UVM_LOW)
 endfunction
 
 virtual task run_phase(uvm_phase phase);
         FG_port.write("initial");
         forever begin
-            //$display("Writing value: %f", values[counter] * amplitude);
+            //`uvm_info(get_name(), $sformatf("Writing value: %f", values[counter] * amplitude), UVM_LOW)
             val_port.write(values[counter] * amplitude);
 
             if (phase_vif.DIR == 1) begin
@@ -248,12 +249,12 @@ virtual task get (output int counter);
 endtask
 
 function void write(reg [7:0] val);
-    //$display("We're writing to speed, ");
+    //`uvm_info(get_name(), $sformatf("We're writing to speed, "), UVM_LOW)
     inter = val;
     amplitude = inter / 8'hFF;
     //if (is_dut)
-       // $display("Speed request: %b, Amplitude: %f", val, amplitude);
-    //$display("New amplitude: %f", amplitude);
+       // `uvm_info(get_name(), $sformatf("Speed request: %b, Amplitude: %f", val, amplitude), UVM_LOW)
+    //`uvm_info(get_name(), $sformatf("New amplitude: %f", amplitude), UVM_LOW)
 endfunction
 
 endclass
@@ -294,9 +295,9 @@ endfunction
 task run_phase(uvm_phase phase);
 
 forever begin
-    //$display ("reached run_phase of phase %b", which_phase);
+    //`uvm_info(get_name(), $sformatf("reached run_phase of phase %b", which_phase), UVM_LOW)
 	time_high = value * period;
-    //$display("Changed value: %f", value);
+    //`uvm_info(get_name(), $sformatf("Changed value: %f", value), UVM_LOW)
     time_low = period - time_high;
 
     if (is_dut) begin
@@ -323,12 +324,12 @@ forever begin
         endcase
     end
     #time_low;
-    //$display("High: %f, Low: %f, Duty Cycle: %f", time_high, time_low, time_high/period);
+    //`uvm_info(get_name(), $sformatf("High: %f, Low: %f, Duty Cycle: %f", time_high, time_low, time_high/period), UVM_LOW)
 end
 endtask : run_phase
 
 function void write(realtime val);
-    //$display("Arrrived Value: %f", value);
+    //`uvm_info(get_name(), $sformatf("Arrrived Value: %f", value), UVM_LOW)
     value = val;
 endfunction
 endclass 
@@ -411,7 +412,7 @@ function void write(string val);
             phase_vif.FG = 0;
         if (FGOLsel == 2'b00 || (FGOLsel == 2'b01 && closed_loop == 1) || (FGOLsel == 2'b10 && (closed_loop || (!closed_loop && first_open))))
             counter += 1;
-        //$display("Counter: %d, Target: %d, FG: %b, String: %s", counter, target, phase_vif.FG, val);
+        //`uvm_info(get_name(), $sformatf("Counter: %d, Target: %d, FG: %b, String: %s", counter, target, phase_vif.FG, val), UVM_LOW)
         if (counter >= target) begin
             phase_vif.FG = ~phase_vif.FG;
             counter = 0;

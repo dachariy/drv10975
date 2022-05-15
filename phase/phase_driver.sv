@@ -39,7 +39,6 @@ endfunction : build_phase
 //Connect Phase
 virtual function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
-    $display ("connect phase of driver");
 endfunction : connect_phase
 
 //Run Phase
