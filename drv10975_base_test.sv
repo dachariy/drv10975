@@ -11,6 +11,8 @@ class drv10975_base_test extends uvm_test;
   drv10975_env dut_env;
   drv10975_env tb_env;
 
+  string demoted_error_q[$];
+
   i2c_e2e_scoreboard i2c_e2e_scbd;
 
 
@@ -62,6 +64,14 @@ class drv10975_base_test extends uvm_test;
     uvm_report_server svr;
     super.report_phase(phase);
     svr = uvm_report_server::get_server();
+
+    foreach(demoted_error_q[i])
+    begin
+      if(svr.get_id_count(demoted_error_q[i]) == 0)
+      begin
+        `uvm_error(get_full_name(), $sformatf("%s was demoted but never fired in simulation", demoted_error_q[i]))
+      end
+    end
  
     if (svr.get_severity_count(UVM_FATAL) + svr.get_severity_count(UVM_ERROR) + svr.get_severity_count(UVM_WARNING) > 0)
      `uvm_info("final_phase", "TEST_RESULT: FAIL", UVM_LOW)
