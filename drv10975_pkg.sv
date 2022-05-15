@@ -11,8 +11,9 @@ package drv10975_pkg;
   `include "phase/phase_seqr.sv"
   `include "phase/phase_sequence.sv"
   `include "phase/phase_monitor.sv"
+  `include "phase/phase_scoreboard.sv"
   `include "phase/phase_agent.sv"
-  `include "phase/phase_test.sv"
+  
   
 
   `include "drv10975_defines.svh"
@@ -29,6 +30,7 @@ package drv10975_pkg;
   `include "drv10975_env.sv"
   `include "drv10975_base_test.sv"
   
+  `include "phase/phase_test.sv"
   `include "I2C/i2c_sanity_read_test.sv"
 endpackage
 

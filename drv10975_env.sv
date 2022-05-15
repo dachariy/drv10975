@@ -27,7 +27,7 @@ class drv10975_env extends uvm_env;
   virtual function void build_phase(uvm_phase phase);
     super.build_phase(phase);
 
-    if(!uvm_config_db #(bit)::get(this, "", "is_dut", is_dut))
+    if(!uvm_config_db #(bit)::get(this, "*", "is_dut", is_dut))
     begin
       `uvm_fatal(get_full_name(), "Cant fetch is_dut from config_db")
     end
@@ -58,8 +58,9 @@ class drv10975_env extends uvm_env;
       end
     end
 
-    register_map = drv10975_register_map::type_id::create("register_map");
-    uvm_config_db #(drv10975_register_map)::set(this, "*", "register_map", register_map);
+
+    if(!uvm_config_db #(drv10975_register_map)::get(this, "*", "register_map", register_map))
+      `uvm_fatal(get_full_name(), "Cant fetch register_map from config_db")
 
     phase_ag = phase_agent::type_id::create("phase_agent", this);
 

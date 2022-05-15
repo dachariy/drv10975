@@ -2,6 +2,13 @@ class phase_agent extends uvm_agent;
 `uvm_component_utils(phase_agent)
 
 get_speed speed;
+
+phase_monitor phase_mon;
+pwm_scoreboard pwm_U_sb;
+pwm_scoreboard pwm_V_sb;
+pwm_scoreboard pwm_W_sb;
+phase_driver phase_drv;
+phase_seqr phase_sqr;
 phase_table tb_U;
 phase_table tb_V;
 phase_table tb_W;
@@ -18,11 +25,17 @@ endfunction: new
 virtual function void build_phase (uvm_phase phase);
     speed = get_speed::type_id::create("speed", this);
     
-    
-    //FG = FG_output::type_id::create("FG", this);
+    phase_mon = phase_monitor::type_id::create("phase_monitor", this);
+    pwm_U_sb = pwm_scoreboard::type_id::create("pwm_U_scoreboard", this);
+    pwm_V_sb = pwm_scoreboard::type_id::create("pwm_V_scoreboard", this);
+    pwm_W_sb = pwm_scoreboard::type_id::create("pwm_W_scoreboard", this);
+
+    FG = FG_output::type_id::create("FG", this);
     tb_U = phase_table::type_id::create("tb_U", this);
     tb_V = phase_table::type_id::create("tb_V", this);
     tb_W = phase_table::type_id::create("tb_W", this);
+    phase_drv = phase_driver::type_id::create("phase_drv", this);
+    phase_sqr = phase_seqr::type_id::create("phase_sqr", this);
     tb_U.offset = 0;
     tb_V.offset = 200;
     tb_W.offset = 400;
@@ -34,17 +47,24 @@ virtual function void build_phase (uvm_phase phase);
     phase_FETs_U.which_phase = 2'b00;
     phase_FETs_V.which_phase = 2'b01;
     phase_FETs_W.which_phase = 2'b10;
-
-    
 endfunction
 
 
 virtual function void connect_phase(uvm_phase phase);
-    //tb_U.FG_port.connect(FG.message_imp);
-    //speed.speed_port.connect(tb_U.speed_imp);
-    //speed.speed_port.connect(tb_V.speed_imp);
-    //speed.speed_port.connect(tb_W.speed_imp);
+    phase_mon.phaseU_port.connect(pwm_U_sb.message_imp);
+    phase_mon.phaseV_port.connect(pwm_V_sb.message_imp);
+    phase_mon.phaseW_port.connect(pwm_W_sb.message_imp);
 
+    tb_U.val_port.connect(pwm_U_sb.counter_imp);
+    tb_V.val_port.connect(pwm_V_sb.counter_imp);
+    tb_W.val_port.connect(pwm_W_sb.counter_imp);
+
+    tb_U.FG_port.connect(FG.message_imp);
+    speed.speed_port.connect(tb_U.speed_imp);
+    speed.speed_port.connect(tb_V.speed_imp);
+    speed.speed_port.connect(tb_W.speed_imp);
+    phase_drv.update_port.connect(speed.updated_imp);
+    phase_drv.seq_item_port.connect(phase_sqr.seq_item_export);
     tb_U.val_port.connect(phase_FETs_U.message_imp);
     tb_V.val_port.connect(phase_FETs_V.message_imp);
     tb_W.val_port.connect(phase_FETs_W.message_imp);

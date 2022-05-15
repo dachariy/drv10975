@@ -3,4 +3,5 @@ interface phase_if;
   reg V;
   reg W;
   reg FG;
+  reg DIR;
 endinterface

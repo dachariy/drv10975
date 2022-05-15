@@ -6,10 +6,13 @@ class drv10975_base_test extends uvm_test;
   
   `uvm_component_utils(drv10975_base_test)
 
+  drv10975_register_map register_map;
+
   drv10975_env dut_env;
   drv10975_env tb_env;
 
   i2c_e2e_scoreboard i2c_e2e_scbd;
+
 
   //Constructor 
   function new(string name = "drv10975_base_test", uvm_component parent = null);
@@ -24,9 +27,12 @@ class drv10975_base_test extends uvm_test;
     tb_env  = drv10975_env::type_id::create("tb_env", this);
     i2c_e2e_scbd = i2c_e2e_scoreboard::type_id::create("i2c_e2e_scbd", this);
 
+    register_map = drv10975_register_map::type_id::create("register_map");
+    uvm_config_db #(drv10975_register_map)::set(this, "*", "register_map", register_map);
+
     //Pass necessary config to ENVs
-    uvm_config_db#(bit)::set(dut_env, "", "is_dut", 1);
-    uvm_config_db#(bit)::set(tb_env, "",  "is_dut", 0);
+    uvm_config_db#(bit)::set(dut_env, "*", "is_dut", 1);
+    uvm_config_db#(bit)::set(tb_env, "*",  "is_dut", 0);
     uvm_config_db#(bit)::set(this, "*dut_env*", "is_master", 0);
     uvm_config_db#(bit)::set(this, "*tb_env*",  "is_master", 1);
 

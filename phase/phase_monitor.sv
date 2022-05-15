@@ -1,11 +1,12 @@
 class phase_monitor extends uvm_monitor; 
+`uvm_component_utils(phase_monitor);
 virtual phase_if phase_vif;
 drv10975_register_map register_map;
   
-uvm_analysis_port #(reg) phaseU_port;
-uvm_analysis_port #(reg) phaseV_port;
-uvm_analysis_port #(reg) phaseW_port;
-uvm_analysis_port #(reg) phaseFG_port;
+uvm_analysis_port #(string) phaseU_port;
+uvm_analysis_port #(string) phaseV_port;
+uvm_analysis_port #(string) phaseW_port;
+uvm_analysis_port #(string) phaseFG_port;
 
 //Constructor 
 function new(string name = "monitor", uvm_component parent = null);
@@ -25,6 +26,10 @@ virtual function void build_phase(uvm_phase phase);
     begin
       `uvm_fatal(get_type_name(), "Cant Fetch register_map from config_db")
     end
+
+    phaseU_port = new("phaseU_port", this);
+    phaseV_port = new("phaseV_port", this);
+    phaseW_port = new("phaseW_port", this);
 endfunction : build_phase
 
   //Connect Phase
@@ -38,31 +43,46 @@ virtual task run_phase(uvm_phase phase);
     fork 
     begin
         forever begin
-            @(phase_vif.U);
-            phaseU_port.write(phase_vif.U);
+            @(phase_vif.U) begin
+                //$display("Writing to Phase U");
+                if (phase_vif.U == 1)
+                    phaseU_port.write("high");
+                else
+                    phaseU_port.write("low");
+            end
         end
     end
     
     begin
         forever begin
-            @(phase_vif.V);
-            phaseV_port.write(phase_vif.V);
+            @(phase_vif.V) begin
+                if (phase_vif.V == 1)
+                    phaseV_port.write("high");
+                else
+                    phaseV_port.write("low");
+            end
         end
     end
 
     begin
         forever begin
-            @(phase_vif.W);
-            phaseW_port.write(phase_vif.W);
+            @(phase_vif.W) begin
+                if (phase_vif.W == 1)
+                    phaseW_port.write("high");
+                else
+                    phaseW_port.write("low");
+            end
         end
     end
-
+    
+    /*
     begin
         forever begin
             @(phase_vif.FG);
-            phaseFG_port.write(phase_vif.FG);
+                phaseFG_port.write(phase_vif.FG);
         end
     end
+    */
     join_none
 
 endtask: run_phase
