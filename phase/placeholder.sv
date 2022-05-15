@@ -3,10 +3,21 @@ typedef class drv10975_register_map;
 class get_speed extends uvm_component;
 `uvm_component_utils(get_speed)
 
+uvm_analysis_imp #(string, get_speed) updated_imp;
 uvm_analysis_port #(reg [7:0]) speed_port;
-reg [7:0] speed;
+reg [7:0] speed_cmd, speed_to_table;
+reg [4:0] closed_loop_threshold; // max speed?
+reg [7:0] closed_loop_data;
+reg [7:0] accel_data;
+reg [2:0] accel_fo;
+reg [2:0] accel_so;
+real fo, so, thres, accel_time;
+real current_speed, initial_time, percent_speed;
+
+real inter1, inter2;
 
 drv10975_register_map register_map;
+bit is_dut;
 
 function new(string name = "get_speed", uvm_component parent = null);
     super.new(name,parent);
@@ -14,23 +25,131 @@ endfunction
 
 virtual function void build_phase (uvm_phase phase);
     super.build_phase(phase);
+    updated_imp = new ("updated_imp", this);
     speed_port = new ("speed_port", this);
 
+    if(!uvm_config_db #(bit)::get(this, "*", "is_dut", is_dut))
+    begin
+      `uvm_fatal(get_full_name(), "Cant fetch is_dut from config_db")
+    end
     
     if(!uvm_config_db #(drv10975_register_map)::get(this, "*", "register_map", register_map)) begin
       `uvm_fatal(get_type_name(), "Cant Fetch register_map from config_db")
     end
-    else
-    speed = 0;
 endfunction
 
 virtual task run_phase(uvm_phase phase);
     forever begin
-        $display("%b, why am i stuck here", speed);
-        register_map.reg_read(.reg_addr(8'h1b), .reg_data(speed));
-        speed_port.write(speed);
+        #1000;
+        if (thres != 0) begin
+            if (current_speed < thres) begin
+                current_speed = fo*($realtime - initial_time) + (so* $pow(($realtime - initial_time),2)  /   2);
+                if (current_speed > thres)
+                    current_speed = thres;
+            end
+            else if (current_speed > thres) begin
+                current_speed = thres;
+            end
+                
+            speed_to_table = int'((current_speed / thres) * 8'hFF);
+            /*
+            if(is_dut == 1)
+                //$display("Current speed: %f, current threshold: %f, speedtotable: %b", current_speed, thres, speed_to_table);
+                $display("fo: %e, so: %e, Current Time: %f, initial time: %f, currentspeed: %f, thres: %f", fo, so, $realtime, initial_time, current_speed, thres);
+            */
+            speed_port.write(speed_to_table);
+        end
+        else begin
+            speed_port.write(speed_cmd);
+        end
     end
 endtask
+
+function void write(string val);
+    $display("val: %s", val);
+    if (val == "initial") begin
+            //$display("INITIAL FOR SPEED BOX");
+           current_speed = 0;
+           thres = 0;
+           speed_cmd = 0;
+    end
+
+    if (val == "updated") begin
+            register_map.reg_read(.reg_addr(8'h1b), .reg_data(speed_cmd));
+            $display("%b, Read in Speed", speed_cmd);
+            //speed_port.write(speed);
+            initial_time = $realtime;
+            inter1 = speed_cmd;
+
+            percent_speed = inter1 / 8'hFF;
+            $display("Percent_speed: %f", percent_speed);
+            register_map.reg_read(.reg_addr(8'h26), .reg_data(closed_loop_data));
+            closed_loop_threshold = closed_loop_data[7:3];
+            $display("%b, Read in closed loop", closed_loop_threshold);
+            register_map.reg_read(.reg_addr(8'h25), .reg_data(accel_data)); 
+            $display("%b, Read in accel_date", accel_data);
+
+            accel_fo = accel_data[2:0];
+            accel_so = accel_data[5:3];
+
+            thres = threshold(closed_loop_threshold) * percent_speed;
+            so = second_order(accel_so);
+            fo = first_order(accel_fo);
+    end
+endfunction
+
+function real first_order;
+    input [2:0] in;
+    case (in)
+        3'b000: first_order = 76/1000000000;
+        3'b001: first_order = 29/1000000000;
+        3'b010: first_order = 19/1000000000;
+        3'b011: first_order = 9.2/1000000000;
+        3'b100: first_order = 4.5/1000000000;
+        3'b101: first_order = 2.1/1000000000;
+        3'b110: first_order = 0.9/1000000000;
+        3'b111: first_order = 0.3/1000000000;
+    endcase
+endfunction
+
+function real second_order;
+    input [2:0] in;
+    case (in)
+        3'b000: second_order = 57/1e+18;
+        3'b001: second_order = 29/1e+18;
+        3'b010: second_order = 14/1e+18;
+        3'b011: second_order = 6.9/1e+18;
+        3'b100: second_order = 3.3/1e+18;
+        3'b101: second_order = 1.6/1e+18;
+        3'b110: second_order = 0.66/1e+18;
+        3'b111: second_order = 0.22/1e+18;
+    endcase
+endfunction
+
+function real threshold;
+    input [4:0] in;
+    real number;
+    if (in[4] == 0) begin
+        number = 0.8;
+        threshold = number * in[3:0];
+    end
+    else begin
+        number = 12.8;
+        threshold = number + (number * (in[3:0]));
+    end
+
+endfunction
+
+function real quadratic_eq;
+input real a, b, c;
+realtime store1, store2;
+store1 = (-1*b + ($sqrt($pow(b,2) - (4*a*c)))) / (2*a);
+store2 = (-1*b - ($sqrt($pow(b,2) - (4*a*c)))) / (2*a);
+if (store1 >= 0)
+    quadratic_eq = store1;
+else
+    quadratic_eq = store2;
+endfunction
 
 endclass
 
@@ -41,8 +160,13 @@ class phase_table extends uvm_component;
 reg FG_lookup; // only one phase needed for FG output
 
 uvm_analysis_imp #(reg [7:0], phase_table) speed_imp;
+
 uvm_analysis_port #(realtime) val_port;
 uvm_analysis_port #(string) FG_port;
+
+bit is_dut;
+virtual phase_if phase_vif;
+
 realtime offset, amplitude;
 realtime period;
 int fd,counter;
@@ -50,20 +174,32 @@ string line;
 realtime values[600];
 reg [7:0] speed;
 
+real inter;
+
 function new(string name="phase_table", uvm_component parent = null);
     super.new(name,parent);
 endfunction: new
 
 virtual function void build_phase (uvm_phase phase);
 	super.build_phase (phase);
+
+    if(!uvm_config_db #(bit)::get(this, "*", "is_dut", is_dut))
+        begin
+          `uvm_fatal(get_full_name(), "Cant fetch is_dut from config_db")
+        end
+
+    if(!(uvm_config_db #(virtual phase_if)::get(this, "*", "phase_vif", phase_vif)))
+    begin
+      `uvm_fatal(get_type_name, "Cant fetch drv_if from config_db")
+    end
+
     speed_imp = new ("speed_imp", this);
     val_port = new ("val_port", this);
     FG_port = new ("FG_port", this);
-    amplitude = 0.0;
-    offset = 0.0;
+    //amplitude = 1.0;
     counter = 0;
-    period = 100;
-    //$display("Reached!");
+    period = 40000;
+
     fd = $fopen("./phase/wave.txt", "r");
     if (fd) begin
         while (!$feof(fd)) begin
@@ -81,27 +217,43 @@ virtual function void build_phase (uvm_phase phase);
 endfunction
 
 virtual task run_phase(uvm_phase phase);
-    //$display ("reached run_phase");
-    forever begin
-        $display("table", speed);
-        val_port.write(values[counter] * amplitude);
-        counter += 1;
-        if (counter == 600)
-            counter = 0;
+        FG_port.write("initial");
+        forever begin
+            //$display("Writing value: %f", values[counter] * amplitude);
+            val_port.write(values[counter] * amplitude);
 
-        // FG
-        
-        if (counter == 200 || counter == 400 || counter == 600)
-            if (amplitude > 0 && FG_lookup)
-                FG_port.write("placeholder");
-        
-        #period;
-    end
+            if (phase_vif.DIR == 1) begin
+                counter += 1;
+                if (counter == 600)
+                    counter = 0;
+            end
+            else begin
+                counter -= 1;
+                if (counter == -1)
+                    counter = 599;
+            end
+
+            // FG
+            
+            if (counter == 200 || counter == 400 || counter == 600)
+                if (amplitude > 0 && FG_lookup)
+                    FG_port.write("placeholder");
+            
+            #period;
+        end  
 endtask : run_phase
 
+virtual task get (output int counter);
+    
+endtask
 
 function void write(reg [7:0] val);
-    amplitude = val / 32'hFF;
+    //$display("We're writing to speed, ");
+    inter = val;
+    amplitude = inter / 8'hFF;
+    //if (is_dut)
+       // $display("Speed request: %b, Amplitude: %f", val, amplitude);
+    //$display("New amplitude: %f", amplitude);
 endfunction
 
 endclass
@@ -111,6 +263,9 @@ class phase_FETs extends uvm_component;
 `uvm_component_utils(phase_FETs)
 
 virtual phase_if phase_vif;
+bit is_dut;
+
+
 reg [1:0] which_phase;
 realtime value, time_high, time_low, period;
 uvm_analysis_imp #(realtime, phase_FETs) message_imp;
@@ -121,44 +276,59 @@ endfunction: new
 
 virtual function void build_phase (uvm_phase phase);
 	super.build_phase (phase);
+
+    if(!uvm_config_db #(bit)::get(this, "*", "is_dut", is_dut))
+    begin
+          `uvm_fatal(get_full_name(), "Cant fetch is_dut from config_db")
+        end
+
     if(!(uvm_config_db #(virtual phase_if)::get(this, "*", "phase_vif", phase_vif)))
     begin
       `uvm_fatal(get_type_name, "Cant fetch drv_if from config_db")
     end
     message_imp = new ("message_imp", this);
-    period = 1000;
-    value = 0.0;
-    which_phase = 2'b11;
+    period = 40000;
+    //value = 1.0;
 endfunction
 
 task run_phase(uvm_phase phase);
+
 forever begin
+    //$display ("reached run_phase of phase %b", which_phase);
 	time_high = value * period;
+    //$display("Changed value: %f", value);
     time_low = period - time_high;
-    case (which_phase)
-    2'b00: 
-        phase_vif.U = 1;
-    2'b01:
-        phase_vif.V = 1;
-    2'b10:
-        phase_vif.W = 1;   
-    endcase
-    #time_high;
-    // output low
-    case (which_phase)
-    2'b00: 
-        phase_vif.U = 0;
-    2'b01:
-        phase_vif.V = 0;
-    2'b10:
-        phase_vif.W = 0;   
-    endcase
+
+    if (is_dut) begin
+        case (which_phase)
+        2'b00: 
+            phase_vif.U = 1;
+        2'b01:
+            phase_vif.V = 1;
+        2'b10:
+            phase_vif.W = 1;   
+        endcase
+    end
+        #time_high;
+
+    if(is_dut) begin
+        // output low
+        case (which_phase)
+        2'b00: 
+            phase_vif.U = 0;
+        2'b01:
+            phase_vif.V = 0;
+        2'b10:
+            phase_vif.W = 0;   
+        endcase
+    end
     #time_low;
     //$display("High: %f, Low: %f, Duty Cycle: %f", time_high, time_low, time_high/period);
 end
 endtask : run_phase
 
 function void write(realtime val);
+    //$display("Arrrived Value: %f", value);
     value = val;
 endfunction
 endclass 
@@ -171,9 +341,11 @@ class FG_output extends uvm_component;
 uvm_analysis_imp #(string, FG_output) message_imp;
 
 drv10975_register_map register_map;
+virtual phase_if phase_vif;
 
 reg [2:0] counter;
 reg [2:0] target;
+
 
 reg FG_output;
 reg closed_loop;
@@ -181,6 +353,7 @@ reg first_open;
 reg [1:0] FGOLsel, prev_sel;
 reg [1:0] FGcycle;
 reg [7:0] data;
+bit is_dut;
 
 function new(string name="FG_output", uvm_component parent = null);
     super.new(name,parent);
@@ -188,8 +361,19 @@ endfunction: new
 
 virtual function void build_phase (uvm_phase phase);
     super.build_phase(phase);
+
+    if(!uvm_config_db #(bit)::get(this, "*", "is_dut", is_dut))
+    begin
+      `uvm_fatal(get_full_name(), "Cant fetch is_dut from config_db")
+    end
+
     if(!uvm_config_db #(drv10975_register_map)::get(this, "*", "register_map", register_map)) begin
       `uvm_fatal(get_type_name(), "Cant Fetch register_map from config_db")
+    end
+
+    if(!(uvm_config_db #(virtual phase_if)::get(this, "*", "phase_vif", phase_vif)))
+    begin
+      `uvm_fatal(get_type_name, "Cant fetch drv_if from config_db")
     end
 
     message_imp = new("message_imp", this);
@@ -199,13 +383,14 @@ virtual function void build_phase (uvm_phase phase);
     FGcycle = data[5:4];
     first_open = 1;
     closed_loop = 0; // idk how to check
-    FG_output = 1;
     counter = 0;
+    
 endfunction
 
 virtual task run_phase(uvm_phase phase);
     super.run_phase(phase);
     forever begin
+        #500;
         if (closed_loop) begin
             first_open = 0;
         end
@@ -215,17 +400,25 @@ virtual task run_phase(uvm_phase phase);
         target = target_count(FGcycle);
         if (prev_sel != 2'b10 && FGOLsel == 2'b10) // if changed FG mode to 2, reset first open loop
             first_open = 1;
+        
     end
 endtask
 
 
 function void write(string val);
-    if (FGOLsel == 2'b00 || (FGOLsel == 2'b01 && closed_loop == 1) || (FGOLsel == 2'b10 && (closed_loop || (!closed_loop && first_open))))
-    counter += 1;
-    if (counter >= target) begin
-        FG_output = ~FG_output;
-        counter = 0;
-    end   
+    if (is_dut) begin
+        if (val == "initial")
+            phase_vif.FG = 0;
+        if (FGOLsel == 2'b00 || (FGOLsel == 2'b01 && closed_loop == 1) || (FGOLsel == 2'b10 && (closed_loop || (!closed_loop && first_open))))
+            counter += 1;
+        //$display("Counter: %d, Target: %d, FG: %b, String: %s", counter, target, phase_vif.FG, val);
+        if (counter >= target) begin
+            phase_vif.FG = ~phase_vif.FG;
+            counter = 0;
+        end
+    end
+        
+
 endfunction
 
 function [2:0] target_count;
