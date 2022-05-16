@@ -24,7 +24,7 @@ package drv10975_pkg;
   `include "I2C/i2c_write_sequence.sv"
 
   `include "drv10975_register_map.sv"
-  
+
   `include "I2C/i2c_scoreboard.sv"
   `include "I2C/i2c_e2e_scoreboard.sv"
   `include "I2C/i2c_driver.sv"
@@ -33,8 +33,19 @@ package drv10975_pkg;
   `include "drv10975_scoreboard.sv"
   `include "drv10975_env.sv"
   `include "drv10975_base_test.sv"
-  
-  `include "phase/phase_test.sv"
+
+  `include "phase/phase_accl_to_duty_cycle_sequence.sv"
+  `include "phase/phase_change_dirn_sequence.sv"
+  `include "phase/phase_lower_spd_2_zero_sequence.sv"
+  `include "phase/phase_speedup_wo_accln_sequence.sv"
+  `include "phase/phase_startup_w_accln_sequence.sv"
+
+  `include "phase/phase_accl_to_duty_cycle_test.sv"
+  `include "phase/phase_change_dirn_test.sv"
+  `include "phase/phase_lower_spd_2_zero_test.sv"
+  `include "phase/phase_speedup_wo_accln_test.sv"
+  `include "phase/phase_startup_w_accln_test.sv"
+
   `include "I2C/i2c_sanity_read_test.sv"
   `include "I2C/i2c_wrong_slv_addr_test.sv"
   `include "I2C/i2c_invalid_reg_addr_test.sv"
@@ -43,4 +54,3 @@ package drv10975_pkg;
 endpackage
 
 `endif
-
