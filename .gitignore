@@ -8,3 +8,5 @@ vc_hdrs.h
 waves.vcd
 I2C/.DS_Store
 .nfs*
+
+.DS_Store
