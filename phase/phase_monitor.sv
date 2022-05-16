@@ -7,6 +7,7 @@ uvm_analysis_port #(string) phaseU_port;
 uvm_analysis_port #(string) phaseV_port;
 uvm_analysis_port #(string) phaseW_port;
 uvm_analysis_port #(string) phaseFG_port;
+uvm_analysis_port #(string) dir_port;
 
 //Constructor 
 function new(string name = "monitor", uvm_component parent = null);
@@ -27,9 +28,11 @@ virtual function void build_phase(uvm_phase phase);
       `uvm_fatal(get_type_name(), "Cant Fetch register_map from config_db")
     end
 
+    phaseFG_port = new("phaseFG_port", this);
     phaseU_port = new("phaseU_port", this);
     phaseV_port = new("phaseV_port", this);
     phaseW_port = new("phaseW_port", this);
+    dir_port = new("dir_port", this);
 endfunction : build_phase
 
   //Connect Phase
@@ -75,14 +78,26 @@ virtual task run_phase(uvm_phase phase);
         end
     end
     
-    /*
+    begin
+        forever begin
+            @(phase_vif.DIR) begin
+                if (phase_vif.DIR == 1)
+                    dir_port.write("high");
+                else
+                    dir_port.write("low");
+            end
+        end
+    end
+
+    
     begin
         forever begin
             @(phase_vif.FG);
                 phaseFG_port.write(phase_vif.FG);
         end
     end
-    */
+    
+
     join_none
 
 endtask: run_phase

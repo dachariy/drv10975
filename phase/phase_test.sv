@@ -15,7 +15,7 @@ endfunction
 
 virtual task run_phase(uvm_phase phase);
     phase.raise_objection(this);
-    $display("Reached this point");
+    //$display("Reached this point");
     //phase_seq.start(tb_env.phase_ag.phase_sqr);
     phase_seq.start(dut_env.phase_ag.phase_sqr);
     //#3000;

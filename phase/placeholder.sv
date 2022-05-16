@@ -42,13 +42,13 @@ virtual task run_phase(uvm_phase phase);
     forever begin
         #1000;
         if (thres != 0) begin
-            if (current_speed < thres) begin
+            if (current_speed < thres*percent_speed) begin
                 current_speed = fo*($realtime - initial_time) + (so* $pow(($realtime - initial_time),2)  /   2);
-                if (current_speed > thres)
+                if (current_speed > (thres*percent_speed))
                     current_speed = thres;
             end
-            else if (current_speed > thres) begin
-                current_speed = thres;
+            else if (current_speed >  (thres*percent_speed)) begin
+                current_speed = thres*percent_speed;
             end
                 
             speed_to_table = int'((current_speed / thres) * 8'hFF);
@@ -66,7 +66,11 @@ virtual task run_phase(uvm_phase phase);
 endtask
 
 function void write(string val);
+<<<<<<< HEAD
+    //$display("val: %s", val);
+=======
     `uvm_info(get_full_name(), $sformatf("val: %s", val), UVM_HIGH)
+>>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
     if (val == "initial") begin
             //`uvm_info(get_name(), $sformatf("INITIAL FOR SPEED BOX"), UVM_LOW)
            current_speed = 0;
@@ -76,23 +80,37 @@ function void write(string val);
 
     if (val == "updated") begin
             register_map.reg_read(.reg_addr(8'h1b), .reg_data(speed_cmd));
+<<<<<<< HEAD
+            //$display("%b, Read in Speed", speed_cmd);
+=======
             `uvm_info(get_name(), $sformatf("%b, Read in Speed", speed_cmd), UVM_LOW)
+>>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
             //speed_port.write(speed);
             initial_time = $realtime;
             inter1 = speed_cmd;
 
             percent_speed = inter1 / 8'hFF;
+<<<<<<< HEAD
+           // $display("Percent_speed: %f", percent_speed);
+            register_map.reg_read(.reg_addr(8'h26), .reg_data(closed_loop_data));
+            closed_loop_threshold = closed_loop_data[7:3];
+            //$display("%b, Read in closed loop", closed_loop_threshold);
+            register_map.reg_read(.reg_addr(8'h25), .reg_data(accel_data)); 
+           // $display("%b, Read in accel_data", accel_data);
+=======
             `uvm_info(get_name(), $sformatf("Percent_speed: %f", percent_speed), UVM_LOW)
             register_map.reg_read(.reg_addr(8'h26), .reg_data(closed_loop_data));
             closed_loop_threshold = closed_loop_data[7:3];
             `uvm_info(get_name(), $sformatf("%b, Read in closed loop", closed_loop_threshold), UVM_LOW)
             register_map.reg_read(.reg_addr(8'h25), .reg_data(accel_data)); 
             `uvm_info(get_name(), $sformatf("%b, Read in accel_date", accel_data), UVM_LOW)
+>>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
 
             accel_fo = accel_data[2:0];
             accel_so = accel_data[5:3];
 
-            thres = threshold(closed_loop_threshold) * percent_speed;
+            //thres = threshold(closed_loop_threshold) * percent_speed;
+            thres = threshold(closed_loop_threshold);
             so = second_order(accel_so);
             fo = first_order(accel_fo);
     end
@@ -153,16 +171,20 @@ endfunction
 
 endclass
 
+`uvm_analysis_imp_decl(_port_dir)
+`uvm_analysis_imp_decl(_port_speed)
 
 class phase_table extends uvm_component;
 `uvm_component_utils(phase_table)
 
 reg FG_lookup; // only one phase needed for FG output
 
-uvm_analysis_imp #(reg [7:0], phase_table) speed_imp;
+uvm_analysis_imp_port_speed #(reg [7:0], phase_table) speed_imp;
+uvm_analysis_imp_port_dir #(reg, phase_table) dir_imp;
 
 uvm_analysis_port #(realtime) val_port;
 uvm_analysis_port #(string) FG_port;
+uvm_analysis_port #(int) counter_port;
 
 bit is_dut;
 virtual phase_if phase_vif;
@@ -173,6 +195,8 @@ int fd,counter;
 string line;
 realtime values[600];
 reg [7:0] speed;
+reg [1:0] which_phase;
+reg current_dir;
 
 real inter;
 
@@ -193,14 +217,15 @@ virtual function void build_phase (uvm_phase phase);
     begin
       `uvm_fatal(get_type_name, "Cant fetch drv_if from config_db")
     end
-
+    counter_port = new("counter_port", this);
+    dir_imp = new ("dir_imp", this);
     speed_imp = new ("speed_imp", this);
     val_port = new ("val_port", this);
     FG_port = new ("FG_port", this);
     //amplitude = 1.0;
     counter = 0;
     period = 40000;
-
+    current_dir = 1;
     fd = $fopen("./phase/wave.txt", "r");
     if (fd) begin
         while (!$feof(fd)) begin
@@ -222,17 +247,9 @@ virtual task run_phase(uvm_phase phase);
         forever begin
             //`uvm_info(get_name(), $sformatf("Writing value: %f", values[counter] * amplitude), UVM_LOW)
             val_port.write(values[counter] * amplitude);
-
-            if (phase_vif.DIR == 1) begin
-                counter += 1;
-                if (counter == 600)
-                    counter = 0;
-            end
-            else begin
-                counter -= 1;
-                if (counter == -1)
-                    counter = 599;
-            end
+            counter += 1;
+            if (counter == 600)
+                counter = 0;
 
             // FG
             
@@ -244,17 +261,55 @@ virtual task run_phase(uvm_phase phase);
         end  
 endtask : run_phase
 
-virtual task get (output int counter);
-    
-endtask
 
+<<<<<<< HEAD
+
+function void write_port_speed(reg [7:0] val);
+    //$display("We're writing to speed, ");
+=======
 function void write(reg [7:0] val);
     //`uvm_info(get_name(), $sformatf("We're writing to speed, "), UVM_LOW)
+>>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
     inter = val;
     amplitude = inter / 8'hFF;
     //if (is_dut)
        // `uvm_info(get_name(), $sformatf("Speed request: %b, Amplitude: %f", val, amplitude), UVM_LOW)
     //`uvm_info(get_name(), $sformatf("New amplitude: %f", amplitude), UVM_LOW)
+endfunction
+
+function void write_port_dir(reg val);
+    counter_port.write(counter);
+    if (current_dir == 1 && val == 0) begin
+        //$display("1Offset: %f", offset);
+        if (which_phase == 2'b01) begin
+            if ((counter + 200) > 600)
+                counter = counter - 400;
+            else
+                counter = counter + 200;
+        end
+        if (which_phase == 2'b10)
+            if ((counter - 200) < 0)
+                counter = counter + 400;
+            else
+                counter = counter - 200;
+        current_dir = 0;
+        //$display("2Offset: %f", counter);
+    end
+    else if (current_dir == 0 && val == 1) begin
+        
+        if (which_phase == 2'b01) begin
+            if ((counter - 200) < 0)
+                counter = counter + 400;
+            else
+                counter = counter - 200; 
+        end
+        if (which_phase == 2'b10)
+            if ((counter + 200) > 600)
+                counter = counter - 400;
+            else
+                counter = counter + 200;
+        current_dir = 1;
+    end
 endfunction
 
 endclass

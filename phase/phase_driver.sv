@@ -7,6 +7,7 @@ virtual phase_if phase_vif;
 
 drv10975_register_map register_map;
 uvm_analysis_port #(string) update_port;
+uvm_analysis_port #(reg) dir_port;
 
 phase_item data_obj;
 reg [7:0] data;
@@ -31,7 +32,7 @@ virtual function void build_phase(uvm_phase phase);
       `uvm_fatal(get_type_name(), "Cant Fetch register_map from config_db")
     end
 
-
+    dir_port = new ("dir_port", this);
     update_port = new ("update_port", this);
 
 endfunction : build_phase
@@ -39,6 +40,10 @@ endfunction : build_phase
 //Connect Phase
 virtual function void connect_phase(uvm_phase phase);
     super.connect_phase(phase);
+<<<<<<< HEAD
+    //$display ("connect phase of driver");
+=======
+>>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
 endfunction : connect_phase
 
 //Run Phase
@@ -48,13 +53,14 @@ virtual task run_phase(uvm_phase phase);
     forever begin
 
         update_port.write("initial"); // setup boxes if necessary
-        phase_vif.DIR = 1;
-
+        
         //register_map.reg_write(.reg_addr(8'h26), .reg_data(8'b00001000), .backdoor_wr(1'b1));
         //register_map.reg_write(.reg_addr(8'h25), .reg_data(8'b00111011), .backdoor_wr(1'b1));
 
 
         seq_item_port.get_next_item(data_obj);
+        dir_port.write(data_obj.dir);
+        phase_vif.DIR = data_obj.dir;
         // Writing to closed loop threshold, Align not implemented yet
         // (Threshold[7:3] + Aligntime[2:0])
         register_map.reg_write(.reg_addr(8'h26), .reg_data({data_obj.threshold, 3'b000}), .backdoor_wr(1'b1));
@@ -76,7 +82,13 @@ virtual task run_phase(uvm_phase phase);
         delay = quadratic_eq(second_order(data_obj.so_accel), first_order(data_obj.fo_accel), -1 * threshold(data_obj.threshold));
         delay = delay * 1.25;
         // allow simulation time
-        #delay
+        if (data_obj.threshold == 0) begin
+            #50000000;
+        end
+        else begin
+            #delay;
+        end
+
         seq_item_port.item_done();
     end
 endtask: run_phase
