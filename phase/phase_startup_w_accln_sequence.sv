@@ -1,8 +1,6 @@
 class phase_startup_w_accln_sequence extends phase_sequence;
   `uvm_object_utils(phase_startup_w_accln_sequence)
 
-  phase_item data_obj;
-
   //Constructor
   function new(string name = "phase_startup_w_accln_sequence");
     super.new(name);

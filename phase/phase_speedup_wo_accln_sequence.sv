@@ -1,7 +1,6 @@
 class phase_speedup_wo_accln_sequence extends phase_sequence;
-`uvm_object_utils(phase_speedup_wo_accln_sequence)
 
-phase_item data_obj;
+`uvm_object_utils(phase_speedup_wo_accln_sequence)
 
   //Constructor
   function new(string name = "phase_speedup_wo_accln_sequence");
