@@ -66,11 +66,6 @@ virtual task run_phase(uvm_phase phase);
 endtask
 
 function void write(string val);
-<<<<<<< HEAD
-    //$display("val: %s", val);
-=======
-    `uvm_info(get_full_name(), $sformatf("val: %s", val), UVM_HIGH)
->>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
     if (val == "initial") begin
             //`uvm_info(get_name(), $sformatf("INITIAL FOR SPEED BOX"), UVM_LOW)
            current_speed = 0;
@@ -80,31 +75,17 @@ function void write(string val);
 
     if (val == "updated") begin
             register_map.reg_read(.reg_addr(8'h1b), .reg_data(speed_cmd));
-<<<<<<< HEAD
-            //$display("%b, Read in Speed", speed_cmd);
-=======
-            `uvm_info(get_name(), $sformatf("%b, Read in Speed", speed_cmd), UVM_LOW)
->>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
             //speed_port.write(speed);
             initial_time = $realtime;
             inter1 = speed_cmd;
 
             percent_speed = inter1 / 8'hFF;
-<<<<<<< HEAD
            // $display("Percent_speed: %f", percent_speed);
             register_map.reg_read(.reg_addr(8'h26), .reg_data(closed_loop_data));
             closed_loop_threshold = closed_loop_data[7:3];
             //$display("%b, Read in closed loop", closed_loop_threshold);
             register_map.reg_read(.reg_addr(8'h25), .reg_data(accel_data)); 
            // $display("%b, Read in accel_data", accel_data);
-=======
-            `uvm_info(get_name(), $sformatf("Percent_speed: %f", percent_speed), UVM_LOW)
-            register_map.reg_read(.reg_addr(8'h26), .reg_data(closed_loop_data));
-            closed_loop_threshold = closed_loop_data[7:3];
-            `uvm_info(get_name(), $sformatf("%b, Read in closed loop", closed_loop_threshold), UVM_LOW)
-            register_map.reg_read(.reg_addr(8'h25), .reg_data(accel_data)); 
-            `uvm_info(get_name(), $sformatf("%b, Read in accel_date", accel_data), UVM_LOW)
->>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
 
             accel_fo = accel_data[2:0];
             accel_so = accel_data[5:3];
@@ -262,14 +243,7 @@ virtual task run_phase(uvm_phase phase);
 endtask : run_phase
 
 
-<<<<<<< HEAD
-
 function void write_port_speed(reg [7:0] val);
-    //$display("We're writing to speed, ");
-=======
-function void write(reg [7:0] val);
-    //`uvm_info(get_name(), $sformatf("We're writing to speed, "), UVM_LOW)
->>>>>>> 8c30a20033deb19d599ac72eb66b37318fc39834
     inter = val;
     amplitude = inter / 8'hFF;
     //if (is_dut)
